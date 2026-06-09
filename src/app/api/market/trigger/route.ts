@@ -2,7 +2,14 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: Request) {
+function getBaseUrl() {
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return 'http://localhost:3000'
+}
+
+export async function POST() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -10,18 +17,25 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const baseUrl = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : 'http://localhost:3000'
-  const secret = process.env.CRON_SECRET
-  const res    = await fetch(`${baseUrl}/api/market/update-all`, {
-    method:  'POST',
+  const baseUrl = getBaseUrl()
+  const res = await fetch(`${baseUrl}/api/market/update-all`, {
+    method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
+      'Authorization': `Bearer ${process.env.CRON_SECRET ?? ''}`,
     },
   })
 
+  const contentType = res.headers.get('content-type')
+  if (!contentType?.includes('application/json')) {
+    const text = await res.text()
+    console.error('[trigger] Non-JSON response:', text.substring(0, 200))
+    return Response.json(
+      { error: 'Internal error', detail: text.substring(0, 200) },
+      { status: 500 },
+    )
+  }
+
   const data = await res.json()
-  return Response.json(data, { status: res.status })
+  return Response.json(data)
 }
