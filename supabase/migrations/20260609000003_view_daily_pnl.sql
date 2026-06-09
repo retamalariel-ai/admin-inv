@@ -7,8 +7,11 @@
 
 SET search_path TO public;
 
--- Reemplazar la vista principal para agregar columnas de variación diaria
-CREATE OR REPLACE VIEW public.portfolio_valuation_unified AS
+-- DROP primero: CREATE OR REPLACE no puede reordenar ni agregar columnas en medio
+DROP VIEW IF EXISTS public.client_aum_summary;
+DROP VIEW IF EXISTS public.portfolio_valuation_unified;
+
+CREATE VIEW public.portfolio_valuation_unified AS
 WITH
 
 -- CTE 1: Último precio disponible por activo (ahora incluye previous_close y daily_change_pct)
@@ -285,8 +288,7 @@ SELECT
 FROM base;
 
 
--- Actualizar también client_aum_summary para exponer daily_pnl_ars
-CREATE OR REPLACE VIEW public.client_aum_summary AS
+CREATE VIEW public.client_aum_summary AS
 SELECT
   client_id,
   client_name,
