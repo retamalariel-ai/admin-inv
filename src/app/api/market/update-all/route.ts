@@ -61,11 +61,15 @@ export async function POST(req: NextRequest) {
     results.tradfi = { skipped: true, reason: 'BYMA cerrado' }
   }
 
-  // 3. Crypto — siempre (mercado 24/7)
+  // 3. FCIs (CAFCI) — siempre (VCP se publica al cierre, disponible 24/7)
+  const fciResult = await callInternal(req, '/api/prices/fci')
+  results.fci = fciResult
+
+  // 4. Crypto — siempre (mercado 24/7)
   const cryptoResult = await callInternal(req, '/api/prices/crypto')
   results.crypto = cryptoResult
 
-  const allOk = [fxResult, ...(bymaOpen ? [results.tradfi as { ok: boolean }] : []), cryptoResult]
+  const allOk = [fxResult, fciResult, ...(bymaOpen ? [results.tradfi as { ok: boolean }] : []), cryptoResult]
     .filter((r): r is { ok: boolean } => 'ok' in r)
     .every(r => r.ok)
 

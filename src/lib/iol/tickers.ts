@@ -29,7 +29,7 @@ export const TICKER_MAP_TO_IOL: Record<string, string> = {
   AL35D: 'AL35D',
   AL41D: 'AL41D',
 
-  // Acciones — iguales
+  // Acciones locales — iguales
   GGAL:  'GGAL',
   YPFD:  'YPFD',
   BMA:   'BMA',
@@ -43,6 +43,12 @@ export const TICKER_MAP_TO_IOL: Record<string, string> = {
   SUPV:  'SUPV',
   BBAR:  'BBAR',
   CRES:  'CRES',
+
+  // CEDEARs — cotizan en BYMA en ARS
+  MELI:  'MELI',
+  XLU:   'XLU',
+  IBIT:  'IBIT',
+  YM34O: 'YM34O',
 }
 
 export function toIOLTicker(dbTicker: string): string {
