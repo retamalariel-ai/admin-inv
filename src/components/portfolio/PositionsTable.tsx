@@ -1,0 +1,444 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Decimal from 'decimal.js'
+import { Info } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
+import { formatARS, formatUSD, formatPct, formatCrypto } from '@/lib/utils/calculations'
+import TransactionDialog from '@/components/transactions/TransactionDialog'
+import { usePnLView } from '@/hooks/usePnLView'
+import type { Database } from '@/types/database.types'
+
+type Position = Database['public']['Views']['portfolio_valuation_unified']['Row']
+type AssetType = Database['public']['Enums']['asset_type']
+
+interface PositionsTableProps {
+  portfolioId: string
+  positions:   Position[]
+}
+
+const ASSET_LABELS: Record<AssetType, string> = {
+  ACCION_LOCAL:       'Acción',
+  CEDEAR:             'CEDEAR',
+  BONO_SOBERANO:      'Bono Sob.',
+  BONO_SUBSOBERANO:   'Bono Sub.',
+  ON:                 'ON',
+  LETES:              'LETES',
+  LECAP:              'LECAP',
+  FCI_MONEY_MARKET:   'FCI MM',
+  FCI_RENTA_FIJA:     'FCI RF',
+  FCI_RENTA_VARIABLE: 'FCI RV',
+  FCI_RENTA_MIXTA:    'FCI Mix',
+  CRYPTO_SPOT:        'Crypto',
+  CRYPTO_STABLECOIN:  'Stable',
+  CRYPTO_EARN:        'Earn',
+  CRYPTO_DEFI_LP:     'DeFi LP',
+  CRYPTO_DEFI_STAKE:  'Stake',
+  CRYPTO_DEFI_LENDING:'Lending',
+  CASH_ARS:           'Cash ARS',
+  CASH_USD_MEP:       'Cash USD',
+  CASH_USD_CCL:       'Cash CCL',
+  CASH_CRYPTO_STABLE: 'Cash Stbl',
+  CASH_CRYPTO_NATIVE: 'Cash Nat.',
+}
+
+const ASSET_COLOR: Partial<Record<AssetType, string>> = {
+  ACCION_LOCAL:        'bg-blue-900/60 text-blue-300',
+  CEDEAR:              'bg-indigo-900/60 text-indigo-300',
+  BONO_SOBERANO:       'bg-emerald-900/60 text-emerald-300',
+  BONO_SUBSOBERANO:    'bg-teal-900/60 text-teal-300',
+  ON:                  'bg-cyan-900/60 text-cyan-300',
+  LETES:               'bg-emerald-900/50 text-emerald-400',
+  LECAP:               'bg-emerald-800/50 text-emerald-300',
+  FCI_MONEY_MARKET:    'bg-slate-700 text-slate-300',
+  FCI_RENTA_FIJA:      'bg-slate-700 text-slate-300',
+  FCI_RENTA_VARIABLE:  'bg-blue-900/50 text-blue-300',
+  FCI_RENTA_MIXTA:     'bg-blue-800/50 text-blue-400',
+  CRYPTO_SPOT:         'bg-amber-900/60 text-amber-300',
+  CRYPTO_STABLECOIN:   'bg-amber-800/50 text-amber-400',
+  CRYPTO_EARN:         'bg-orange-900/60 text-orange-300',
+  CRYPTO_DEFI_LP:      'bg-purple-900/60 text-purple-300',
+  CRYPTO_DEFI_STAKE:   'bg-purple-800/60 text-purple-300',
+  CRYPTO_DEFI_LENDING: 'bg-violet-900/60 text-violet-300',
+  CASH_ARS:            'bg-slate-700 text-slate-400',
+  CASH_USD_MEP:        'bg-slate-700 text-slate-400',
+  CASH_USD_CCL:        'bg-slate-700 text-slate-400',
+  CASH_CRYPTO_STABLE:  'bg-slate-700 text-slate-400',
+  CASH_CRYPTO_NATIVE:  'bg-slate-700 text-slate-400',
+}
+
+const CRYPTO_TYPES: AssetType[] = [
+  'CRYPTO_SPOT', 'CRYPTO_STABLECOIN', 'CRYPTO_EARN',
+  'CRYPTO_DEFI_LP', 'CRYPTO_DEFI_STAKE', 'CRYPTO_DEFI_LENDING',
+  'CASH_CRYPTO_NATIVE', 'CASH_CRYPTO_STABLE',
+]
+
+function isCrypto(type: AssetType | null): boolean {
+  return type != null && CRYPTO_TYPES.includes(type)
+}
+
+function formatQty(pos: Position): string {
+  if (pos.quantity_held == null) return '—'
+  const qty = new Decimal(pos.quantity_held)
+  return isCrypto(pos.asset_type) ? formatCrypto(qty) : qty.toFixed(2)
+}
+
+function formatPrice(pos: Position): string {
+  if (pos.current_price == null) return '—'
+  const p = new Decimal(pos.current_price)
+  if (isCrypto(pos.asset_type)) return formatUSD(p)
+  return formatARS(p)
+}
+
+function formatPPP(pos: Position): string {
+  if (pos.ppp_ars == null) return '—'
+  return formatARS(new Decimal(pos.ppp_ars))
+}
+
+function formatBreakEven(pos: Position): { price: string; pct: string; above: boolean } | null {
+  if (pos.break_even_price_ars == null) return null
+  const price = formatARS(new Decimal(pos.break_even_price_ars))
+  if (pos.spread_vs_breakeven_pct == null) return { price, pct: '—', above: true }
+  const above = pos.spread_vs_breakeven_pct >= 0
+  const pct   = formatPct(new Decimal(pos.spread_vs_breakeven_pct))
+  return { price, pct, above }
+}
+
+function getPnLContext(pos: Position): { msg: string; color: string } | null {
+  const pnlARS = pos.unrealized_pnl_ars ?? 0
+  const pnlUSD = pos.unrealized_pnl_usd ?? 0
+  if (Math.abs(pnlARS) < 0.01 && Math.abs(pnlUSD) < 0.01) return null
+  if (pnlARS > 0 && pnlUSD < 0)
+    return { msg: '⚠ Ganancia en ARS por devaluación. En USD: pérdida.', color: 'text-amber-400' }
+  if (pnlARS > 0 && pnlUSD > 0)
+    return { msg: '✓ Ganancia real en ARS y USD', color: 'text-emerald-500' }
+  if (pnlARS < 0 && pnlUSD < 0)
+    return { msg: '✗ Pérdida en ARS y USD', color: 'text-red-400' }
+  if (pnlARS < 0 && pnlUSD > 0)
+    return { msg: '⚠ Pérdida en ARS por apreciación. En USD: ganancia.', color: 'text-amber-400' }
+  return null
+}
+
+const DETALLE_TOOLTIP = `P&L ARS = Ganancia de precio + Ganancia cambiaria
+
+Ganancia de precio: el activo subió/bajó de valor en dólares reales.
+
+Ganancia cambiaria: el peso se devaluó desde que compraste, haciendo que tu inversión valga más en pesos aunque el activo no haya subido.
+
+Para saber si realmente ganaste, mirá el P&L USD.`
+
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="relative group inline-flex items-center">
+      <Info className="h-3 w-3 text-slate-500 cursor-help ml-1 flex-shrink-0" />
+      <span className="
+        absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 rounded-lg
+        bg-slate-700 text-slate-200 text-xs leading-relaxed font-normal normal-case tracking-normal
+        opacity-0 group-hover:opacity-100 pointer-events-none z-50
+        whitespace-pre-wrap shadow-xl border border-slate-600
+        transition-opacity duration-150
+      ">
+        {text}
+      </span>
+    </span>
+  )
+}
+
+const PNL_VIEWS = ['ARS', 'USD', 'DETALLE'] as const
+
+const FILTER_GROUPS: { label: string; types: AssetType[] }[] = [
+  {
+    label: 'Renta Variable',
+    types: ['ACCION_LOCAL', 'CEDEAR', 'FCI_RENTA_VARIABLE', 'FCI_RENTA_MIXTA'],
+  },
+  {
+    label: 'Renta Fija',
+    types: ['BONO_SOBERANO', 'BONO_SUBSOBERANO', 'ON', 'LETES', 'LECAP', 'FCI_RENTA_FIJA', 'FCI_MONEY_MARKET'],
+  },
+  {
+    label: 'Crypto',
+    types: ['CRYPTO_SPOT', 'CRYPTO_STABLECOIN', 'CRYPTO_EARN', 'CRYPTO_DEFI_LP', 'CRYPTO_DEFI_STAKE', 'CRYPTO_DEFI_LENDING'],
+  },
+  {
+    label: 'Cash',
+    types: ['CASH_ARS', 'CASH_USD_MEP', 'CASH_USD_CCL', 'CASH_CRYPTO_STABLE', 'CASH_CRYPTO_NATIVE'],
+  },
+]
+
+export default function PositionsTable({ portfolioId, positions }: PositionsTableProps) {
+  const router = useRouter()
+  const [activeGroup, setActiveGroup]         = useState<string | null>(null)
+  const [txDialogOpen, setTxDialogOpen]       = useState(false)
+  const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>()
+  const [selectedTicker, setSelectedTicker]   = useState<string | undefined>()
+  const [pnlView, setPnlView]                 = usePnLView()
+
+  function openTxFor(pos: Position) {
+    setSelectedAssetId(pos.asset_id ?? undefined)
+    setSelectedTicker(pos.ticker ?? undefined)
+    setTxDialogOpen(true)
+  }
+
+  const filtered = activeGroup
+    ? positions.filter(p =>
+        FILTER_GROUPS.find(g => g.label === activeGroup)?.types.includes(p.asset_type as AssetType)
+      )
+    : positions
+
+  const colSpan = pnlView === 'DETALLE' ? 12 : 11
+
+  return (
+    <div className="space-y-4">
+      {/* Filtros + Toggle P&L */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            size="sm"
+            variant={activeGroup === null ? 'default' : 'outline'}
+            onClick={() => setActiveGroup(null)}
+            className={activeGroup === null
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+              : 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}
+          >
+            Todos ({positions.length})
+          </Button>
+          {FILTER_GROUPS.map(g => {
+            const count = positions.filter(p =>
+              g.types.includes(p.asset_type as AssetType)
+            ).length
+            if (count === 0) return null
+            const active = activeGroup === g.label
+            return (
+              <Button
+                key={g.label}
+                size="sm"
+                variant={active ? 'default' : 'outline'}
+                onClick={() => setActiveGroup(active ? null : g.label)}
+                className={active
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                  : 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}
+              >
+                {g.label} ({count})
+              </Button>
+            )
+          })}
+        </div>
+
+        {/* Toggle de vista P&L */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500">P&L:</span>
+          {PNL_VIEWS.map(v => (
+            <Button
+              key={v}
+              size="sm"
+              onClick={() => setPnlView(v)}
+              className={pnlView === v
+                ? 'h-7 text-xs px-2.5 bg-emerald-700 hover:bg-emerald-600 text-white'
+                : 'h-7 text-xs px-2.5 border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700 bg-transparent'
+              }
+            >
+              {v === 'DETALLE' ? 'Detalle' : v}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="rounded-xl border border-slate-700 overflow-hidden">
+        <Table>
+          <TableHeader className="bg-slate-800/80">
+            <TableRow className="border-slate-700 hover:bg-transparent">
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Ticker</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Nombre</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Cantidad</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">PPP ARS</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Precio actual</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Valor ARS</TableHead>
+
+              {pnlView === 'ARS' && (
+                <>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L ARS</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                </>
+              )}
+              {pnlView === 'USD' && (
+                <>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L USD</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                </>
+              )}
+              {pnlView === 'DETALLE' && (
+                <>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">
+                    <span className="inline-flex items-center justify-end">
+                      P&L ARS
+                      <InfoTooltip text={DETALLE_TOOLTIP} />
+                    </span>
+                  </TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right whitespace-nowrap">
+                    Del cual: FX
+                  </TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right whitespace-nowrap">
+                    Del cual: Precio
+                  </TableHead>
+                </>
+              )}
+
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Break-even</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colSpan} className="text-center text-slate-500 py-10">
+                  Sin posiciones
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((pos, i) => {
+                const pnlARS    = new Decimal(pos.unrealized_pnl_ars ?? 0)
+                const pnlPct    = new Decimal(pos.unrealized_pnl_ars_pct ?? 0)
+                const pnlUSD    = new Decimal(pos.unrealized_pnl_usd ?? 0)
+                const costUSD   = new Decimal(pos.total_cost_basis_usd ?? 0)
+                const pnlUsdPct = costUSD.gt(0) ? pnlUSD.div(costUSD) : new Decimal(0)
+                const fxGain    = new Decimal(pos.fx_gain_loss_ars ?? 0)
+                const priceGain = new Decimal(pos.price_gain_loss_ars ?? 0)
+                const context   = pnlView === 'DETALLE' ? getPnLContext(pos) : null
+
+                const arsColor  = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const usdColor  = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const fxColor   = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
+                const priceColor = priceGain.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-700 text-slate-400'
+                const be         = formatBreakEven(pos)
+
+                return (
+                  <TableRow
+                    key={`${pos.asset_id}-${i}`}
+                    className="border-slate-700/50 hover:bg-slate-800/60"
+                  >
+                    <TableCell className="font-mono font-semibold text-white">
+                      {pos.ticker ?? '—'}
+                    </TableCell>
+                    <TableCell className="text-slate-300 max-w-[180px] truncate" title={pos.asset_name ?? undefined}>
+                      {pos.asset_name ?? '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`text-xs border-0 ${badgeClass}`}>
+                        {pos.asset_type ? ASSET_LABELS[pos.asset_type as AssetType] : '—'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-slate-200">
+                      {formatQty(pos)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-slate-400 text-sm">
+                      {formatPPP(pos)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-slate-200">
+                      {formatPrice(pos)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold text-white">
+                      {pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—'}
+                    </TableCell>
+
+                    {pnlView === 'ARS' && (
+                      <>
+                        <TableCell className={`text-right font-mono font-semibold ${arsColor}`}>
+                          {formatARS(pnlARS)}
+                        </TableCell>
+                        <TableCell className={`text-right font-mono text-sm ${arsColor}`}>
+                          {formatPct(pnlPct)}
+                        </TableCell>
+                      </>
+                    )}
+                    {pnlView === 'USD' && (
+                      <>
+                        <TableCell className={`text-right font-mono font-semibold ${usdColor}`}>
+                          {formatUSD(pnlUSD)}
+                        </TableCell>
+                        <TableCell className={`text-right font-mono text-sm ${usdColor}`}>
+                          {formatPct(pnlUsdPct)}
+                        </TableCell>
+                      </>
+                    )}
+                    {pnlView === 'DETALLE' && (
+                      <>
+                        {/* P&L ARS total + contexto */}
+                        <TableCell className="text-right">
+                          <div className={`font-mono font-semibold text-sm ${arsColor}`}>
+                            {formatARS(pnlARS)}
+                          </div>
+                          <div className={`font-mono text-xs ${arsColor}`}>
+                            {formatPct(pnlPct)}
+                          </div>
+                          {context && (
+                            <div className={`text-[10px] mt-0.5 leading-tight ${context.color}`}>
+                              {context.msg}
+                            </div>
+                          )}
+                        </TableCell>
+                        {/* Ganancia cambiaria */}
+                        <TableCell className="text-right">
+                          <div className={`font-mono text-xs ${fxColor}`}>
+                            {formatARS(fxGain)}
+                          </div>
+                          <div className="text-[10px] text-slate-600">devaluación</div>
+                        </TableCell>
+                        {/* Ganancia de precio pura */}
+                        <TableCell className="text-right">
+                          <div className={`font-mono text-xs ${priceColor}`}>
+                            {formatARS(priceGain)}
+                          </div>
+                          <div className="text-[10px] text-slate-600">precio real</div>
+                        </TableCell>
+                      </>
+                    )}
+
+                    <TableCell className="text-right">
+                      {be ? (
+                        <div>
+                          <div className="font-mono text-slate-400 text-xs">{be.price}</div>
+                          <div className={`font-mono text-xs ${be.above ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {be.above ? '▲ ' : '▼ '}{be.pct}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-slate-600 text-xs">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openTxFor(pos)}
+                        className="text-xs border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                      >
+                        + Tx
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <TransactionDialog
+        portfolioId={portfolioId}
+        defaultAssetId={selectedAssetId}
+        defaultAssetTicker={selectedTicker}
+        open={txDialogOpen}
+        onOpenChange={setTxDialogOpen}
+        onSuccess={() => router.refresh()}
+      />
+    </div>
+  )
+}

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/market/update-all",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
