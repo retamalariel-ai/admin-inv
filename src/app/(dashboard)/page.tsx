@@ -16,11 +16,15 @@ export default async function DashboardPage() {
   const clients   = clientSummaries ?? []
   const positions = allPositions    ?? []
 
-  const totalAUMars    = clients.reduce((s, c) => s + (c.total_aum_ars            ?? 0), 0)
-  const totalAUMusd    = clients.reduce((s, c) => s + (c.total_aum_usd            ?? 0), 0)
-  const totalPnlARS    = clients.reduce((s, c) => s + (c.total_unrealized_pnl_ars ?? 0), 0)
-  const totalPnlUSD    = clients.reduce((s, c) => s + (c.total_unrealized_pnl_usd ?? 0), 0)
-  const portfolioCount = clients.reduce((s, c) => s + (c.portfolio_count          ?? 0), 0)
+  const totalAUMars      = clients.reduce((s, c) => s + (c.total_aum_ars            ?? 0), 0)
+  const totalAUMusd      = clients.reduce((s, c) => s + (c.total_aum_usd            ?? 0), 0)
+  const totalPnlARS      = clients.reduce((s, c) => s + (c.total_unrealized_pnl_ars ?? 0), 0)
+  const totalPnlUSD      = clients.reduce((s, c) => s + (c.total_unrealized_pnl_usd ?? 0), 0)
+  const portfolioCount   = clients.reduce((s, c) => s + (c.portfolio_count          ?? 0), 0)
+  const hasDailyData     = clients.some(c => (c as any).total_daily_pnl_ars != null)
+  const totalDailyPnlARS = hasDailyData
+    ? clients.reduce((s, c) => s + ((c as any).total_daily_pnl_ars ?? 0), 0)
+    : null
 
   const allocationMap = new Map<string, number>()
   for (const p of positions) {
@@ -48,6 +52,7 @@ export default async function DashboardPage() {
         totalAUMusd={totalAUMusd}
         totalPnlARS={totalPnlARS}
         totalPnlUSD={totalPnlUSD}
+        totalDailyPnlARS={totalDailyPnlARS}
         clientCount={clients.length}
         portfolioCount={portfolioCount}
       />

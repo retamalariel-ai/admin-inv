@@ -79,15 +79,16 @@ async function iolFetch(path: string) {
 }
 
 export interface IOLQuote {
-  ultimoPrecio:       number
-  variacion:          number
-  apertura:           number
-  maximo:             number
-  minimo:             number
-  moneda:             string
-  lote:               number
+  ultimoPrecio:        number
+  variacion:           number
+  apertura:            number
+  maximo:              number
+  minimo:              number
+  cierreAnterior:      number
+  moneda:              string
+  lote:                number
   cantidadOperaciones: number
-  fechaHora:          string
+  fechaHora:           string
 }
 
 export async function getIOLQuote(ticker: string): Promise<IOLQuote> {

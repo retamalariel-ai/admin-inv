@@ -1,7 +1,7 @@
 'use client'
 
 import Decimal from 'decimal.js'
-import { formatARS, formatUSD } from '@/lib/utils/calculations'
+import { formatARS, formatUSD, formatPct } from '@/lib/utils/calculations'
 
 interface PortfolioSummaryProps {
   positions: {
@@ -14,6 +14,7 @@ interface PortfolioSummaryProps {
     total_income_received_ars: number | null
     total_return_ars:          number | null
     spread_vs_breakeven_pct:   number | null
+    daily_pnl_ars?:            number | null
   }[]
 }
 
@@ -59,6 +60,12 @@ export default function PortfolioSummary({ positions }: PortfolioSummaryProps) {
   const incomeARS   = sum(positions.map(p => p.total_income_received_ars))
   const totalRetARS = sum(positions.map(p => p.total_return_ars))
 
+  const dailyPnlARS    = sum(positions.map(p => p.daily_pnl_ars ?? null))
+  const hasDailyData   = positions.some(p => p.daily_pnl_ars != null)
+  const dailyPct       = aumARS.gt(0) && hasDailyData
+    ? dailyPnlARS.div(aumARS.minus(dailyPnlARS))
+    : null
+
   const withBreakEven  = positions.filter(p => p.spread_vs_breakeven_pct != null)
   const belowBreakEven = withBreakEven.filter(p => (p.spread_vs_breakeven_pct ?? 0) < 0).length
   const aboveBreakEven = withBreakEven.length - belowBreakEven
@@ -97,6 +104,17 @@ export default function PortfolioSummary({ positions }: PortfolioSummaryProps) {
           sub={formatUSD(aumUSD) + ' MEP'}
           subPositive={null}
         />
+
+        {/* Variación del día (1D) — comparable con el broker */}
+        {hasDailyData && (
+          <MetricCard
+            label="Hoy (1D)"
+            value={formatARS(dailyPnlARS)}
+            sub={dailyPct ? formatPct(dailyPct) + ' del portfolio' : 'vs. cierre anterior'}
+            positive={dailyPnlARS.gte(0)}
+            subPositive={null}
+          />
+        )}
 
         {/* P&L no realizado: ARS como valor principal, USD como subtítulo con su propio color */}
         <MetricCard

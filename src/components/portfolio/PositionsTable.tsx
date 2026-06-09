@@ -14,7 +14,10 @@ import TransactionDialog from '@/components/transactions/TransactionDialog'
 import { usePnLView } from '@/hooks/usePnLView'
 import type { Database } from '@/types/database.types'
 
-type Position = Database['public']['Views']['portfolio_valuation_unified']['Row']
+type Position = Database['public']['Views']['portfolio_valuation_unified']['Row'] & {
+  daily_pnl_ars?:    number | null
+  daily_change_pct?: number | null
+}
 type AssetType = Database['public']['Enums']['asset_type']
 
 interface PositionsTableProps {
@@ -149,7 +152,14 @@ function InfoTooltip({ text }: { text: string }) {
   )
 }
 
-const PNL_VIEWS = ['ARS', 'USD', 'DETALLE'] as const
+const HOY_TOOLTIP = `Variación del día vs. cierre anterior.
+Equivalente al indicador 1D de tu broker.
+
+Muestra cuánto ganó o perdió cada posición
+solo en el día de hoy, sin considerar el
+costo de compra original.`
+
+const PNL_VIEWS = ['ARS', 'HOY', 'USD', 'DETALLE'] as const
 
 const FILTER_GROUPS: { label: string; types: AssetType[] }[] = [
   {
@@ -191,6 +201,7 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
     : positions
 
   const colSpan = pnlView === 'DETALLE' ? 12 : 11
+
 
   return (
     <div className="space-y-4">
@@ -242,7 +253,7 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
                 : 'h-7 text-xs px-2.5 border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700 bg-transparent'
               }
             >
-              {v === 'DETALLE' ? 'Detalle' : v}
+              {v === 'DETALLE' ? 'Detalle' : v === 'HOY' ? 'Hoy 1D' : v === 'ARS' ? 'Total ARS' : v}
             </Button>
           ))}
         </div>
@@ -263,7 +274,18 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
 
               {pnlView === 'ARS' && (
                 <>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L ARS</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L Total</TableHead>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                </>
+              )}
+              {pnlView === 'HOY' && (
+                <>
+                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">
+                    <span className="inline-flex items-center justify-end">
+                      Hoy (1D)
+                      <InfoTooltip text={HOY_TOOLTIP} />
+                    </span>
+                  </TableHead>
                   <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
                 </>
               )}
@@ -312,10 +334,14 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
                 const priceGain = new Decimal(pos.price_gain_loss_ars ?? 0)
                 const context   = pnlView === 'DETALLE' ? getPnLContext(pos) : null
 
-                const arsColor  = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const usdColor  = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const fxColor   = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
+                const dailyPnl    = pos.daily_pnl_ars    != null ? new Decimal(pos.daily_pnl_ars)    : null
+                const dailyChgPct = pos.daily_change_pct != null ? new Decimal(pos.daily_change_pct) : null
+
+                const arsColor   = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const usdColor   = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const fxColor    = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
                 const priceColor = priceGain.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                const hoyColor   = dailyPnl == null ? 'text-slate-500' : dailyPnl.gte(0) ? 'text-emerald-400' : 'text-red-400'
                 const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-700 text-slate-400'
                 const be         = formatBreakEven(pos)
 
@@ -355,6 +381,16 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
                         </TableCell>
                         <TableCell className={`text-right font-mono text-sm ${arsColor}`}>
                           {formatPct(pnlPct)}
+                        </TableCell>
+                      </>
+                    )}
+                    {pnlView === 'HOY' && (
+                      <>
+                        <TableCell className={`text-right font-mono font-semibold ${hoyColor}`}>
+                          {dailyPnl != null ? formatARS(dailyPnl) : '—'}
+                        </TableCell>
+                        <TableCell className={`text-right font-mono text-sm ${hoyColor}`}>
+                          {dailyChgPct != null ? formatPct(dailyChgPct) : '—'}
                         </TableCell>
                       </>
                     )}

@@ -110,29 +110,39 @@ async function fetchFromIOL(
     const q         = quotes.get(iolTicker.toUpperCase())
     if (!q || q.ultimoPrecio <= 0) return []
 
-    const bond  = isBond(a.asset_type as AssetType)
-    const price = bond ? q.ultimoPrecio / 100 : q.ultimoPrecio
+    const bond         = isBond(a.asset_type as AssetType)
+    const scale        = bond ? 100 : 1
+    const price        = q.ultimoPrecio / scale
+    const prevClose    = q.cierreAnterior > 0 ? q.cierreAnterior / scale : null
+    const dailyChgPct  = prevClose && prevClose > 0
+      ? (price - prevClose) / prevClose
+      : null
 
     return [{
-      asset_id:   a.id,
-      quote_date: quoteDate,
-      quote_time: quoteTime,
+      asset_id:          a.id,
+      quote_date:        quoteDate,
+      quote_time:        quoteTime,
       price,
-      price_open: q.apertura > 0 ? (bond ? q.apertura / 100 : q.apertura) : null,
-      price_high: q.maximo   > 0 ? (bond ? q.maximo   / 100 : q.maximo)   : null,
-      price_low:  q.minimo   > 0 ? (bond ? q.minimo   / 100 : q.minimo)   : null,
-      volume_24h: null,
-      currency:   priceCurrency(a.ticker, a.asset_type as AssetType),
-      source:     'IOL_API',
-      is_closing: false,
+      price_open:        q.apertura > 0 ? q.apertura / scale : null,
+      price_high:        q.maximo   > 0 ? q.maximo   / scale : null,
+      price_low:         q.minimo   > 0 ? q.minimo   / scale : null,
+      previous_close:    prevClose,
+      daily_change_pct:  dailyChgPct,
+      volume_24h:        null,
+      currency:          priceCurrency(a.ticker, a.asset_type as AssetType),
+      source:            'IOL_API',
+      is_closing:        false,
     }]
   })
 
   if (inserts.length === 0) throw new Error('IOL returned no usable quotes')
 
-  const { error: upsertErr } = await supabase
-    .from('price_quotes')
-    .upsert(inserts, { ignoreDuplicates: true })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: upsertErr } = await (supabase.from('price_quotes') as any)
+    .upsert(inserts, {
+      onConflict:      'asset_id,quote_date,source',
+      ignoreDuplicates: false,
+    })
 
   if (upsertErr) throw new Error(upsertErr.message)
 

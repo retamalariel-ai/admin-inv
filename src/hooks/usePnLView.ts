@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 
-export type PnLView = 'ARS' | 'USD' | 'DETALLE'
+export type PnLView = 'ARS' | 'HOY' | 'USD' | 'DETALLE'
 
 const STORAGE_KEY = 'pnl-view'
 

@@ -1,15 +1,16 @@
 'use client'
 
 import Decimal from 'decimal.js'
-import { formatARS, formatUSD } from '@/lib/utils/calculations'
+import { formatARS, formatUSD, formatPct } from '@/lib/utils/calculations'
 
 interface AUMSummaryProps {
-  totalAUMars:    number
-  totalAUMusd:    number
-  totalPnlARS:    number
-  totalPnlUSD:    number
-  clientCount:    number
-  portfolioCount: number
+  totalAUMars:      number
+  totalAUMusd:      number
+  totalPnlARS:      number
+  totalPnlUSD:      number
+  totalDailyPnlARS: number | null
+  clientCount:      number
+  portfolioCount:   number
 }
 
 type AccentColor = 'emerald' | 'blue' | 'amber' | 'none'
@@ -81,22 +82,34 @@ export default function AUMSummary({
   totalAUMusd,
   totalPnlARS,
   totalPnlUSD,
+  totalDailyPnlARS,
   clientCount,
   portfolioCount,
 }: AUMSummaryProps) {
-  const pnlARS = new Decimal(totalPnlARS)
-  const pnlUSD = new Decimal(totalPnlUSD)
+  const pnlARS  = new Decimal(totalPnlARS)
+  const pnlUSD  = new Decimal(totalPnlUSD)
+  const aumARS  = new Decimal(totalAUMars)
+  const dailyPnl = totalDailyPnlARS != null ? new Decimal(totalDailyPnlARS) : null
+  // % = daily / (aum - daily) ≈ daily / aum para valores pequeños
+  const dailyPct = dailyPnl != null && aumARS.gt(0)
+    ? dailyPnl.div(aumARS.minus(dailyPnl))
+    : null
   const hasDivergence = pnlARS.gt(0) && pnlUSD.lt(0)
 
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-4 gap-4">
-        {/* AUM: ARS + USD en una sola card */}
+        {/* AUM: ARS + USD en una sola card + variación del día */}
         <KpiCard
           label="AUM Total"
-          value={formatARS(new Decimal(totalAUMars))}
-          valueSub={formatUSD(new Decimal(totalAUMusd)) + ' MEP'}
-          valueSubPositive={null}
+          value={formatARS(aumARS)}
+          valueSub={
+            dailyPnl != null
+              ? `${dailyPnl.gte(0) ? '+' : ''}${formatARS(dailyPnl)} hoy${dailyPct ? ` (${dailyPct.gte(0) ? '+' : ''}${formatPct(dailyPct)})` : ''}`
+              : formatUSD(new Decimal(totalAUMusd)) + ' MEP'
+          }
+          valueSubPositive={dailyPnl != null ? dailyPnl.gte(0) : null}
+          sub={dailyPnl != null ? formatUSD(new Decimal(totalAUMusd)) + ' MEP' : undefined}
           accent="emerald"
           colSpan="col-span-2"
         />
