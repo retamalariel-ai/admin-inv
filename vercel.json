@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/market/update-all",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 13 * * 1-5"
     }
   ]
 }
