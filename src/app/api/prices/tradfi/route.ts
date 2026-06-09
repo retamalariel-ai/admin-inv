@@ -105,10 +105,10 @@ async function fetchFromIOL(
   const iolTickers = [...new Set(assets.map(a => toIOLTicker(a.ticker)))]
   const quotes     = await getIOLQuotes(iolTickers)
 
-  // Log del primer quote crudo — verificar que cierreAnterior existe y tiene valor
-  const [firstTicker, firstQuote] = [...quotes.entries()][0] ?? []
+  // Log del primer quote completo para debug
+  const firstQuote = Array.from(quotes.entries())[0]
   if (firstQuote) {
-    console.log(`[tradfi] Raw IOL quote for ${firstTicker}:`, JSON.stringify(firstQuote))
+    console.log('[IOL RAW QUOTE]', firstQuote[0], JSON.stringify(firstQuote[1]))
   }
 
   const inserts = assets.flatMap(a => {
