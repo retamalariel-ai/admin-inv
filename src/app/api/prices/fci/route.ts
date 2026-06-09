@@ -1,7 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { getCAFCIQuotes } from '@/lib/cafci/client'
 import type { Database } from '@/types/database.types'
-import type { Currency } from '@/types/database.types'
+
+type Currency = Database['public']['Enums']['currency']
 
 function getServiceClient() {
   return createClient<Database>(
