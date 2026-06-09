@@ -236,7 +236,7 @@ export default function ConfigDashboard({ assets, fxRates, latestPrices, systemS
             size="sm"
             className="bg-emerald-600 hover:bg-emerald-700 gap-2"
             disabled={!!loading}
-            onClick={() => callEndpoint('/api/market/update-all', 'POST', 'Actualizar Todo')}
+            onClick={() => callEndpoint('/api/market/trigger', 'POST', 'Actualizar Todo')}
           >
             {loading === 'Actualizar Todo' ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
             Actualizar Todo
