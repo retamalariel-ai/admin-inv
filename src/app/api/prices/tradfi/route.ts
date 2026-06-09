@@ -137,6 +137,8 @@ async function fetchFromIOL(
 
   if (inserts.length === 0) throw new Error('IOL returned no usable quotes')
 
+  console.log('[tradfi] Sample insert:', JSON.stringify(inserts[0]))
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: upsertErr } = await (supabase.from('price_quotes') as any)
     .upsert(inserts, {
