@@ -10,9 +10,11 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const base   = new URL(req.url).origin
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : 'http://localhost:3000'
   const secret = process.env.CRON_SECRET
-  const res    = await fetch(`${base}/api/market/update-all`, {
+  const res    = await fetch(`${baseUrl}/api/market/update-all`, {
     method:  'POST',
     headers: {
       'Content-Type': 'application/json',
