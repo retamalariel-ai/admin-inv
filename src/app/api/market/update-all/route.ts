@@ -16,12 +16,18 @@ function isBYMAOpen(): boolean {
   return timeMin >= 11 * 60 && timeMin <= 17 * 60 + 30    // 11:00–17:30
 }
 
-// En producción Vercel inyecta Authorization: Bearer <CRON_SECRET>
+// Acepta Authorization: Bearer <CRON_SECRET> (Vercel cron + trigger proxy)
+// o x-cron-secret: <CRON_SECRET> (llamadas legacy / curl manual)
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return true   // en dev sin secret, permitir siempre
-  const auth = req.headers.get('authorization')
-  return auth === `Bearer ${secret}`
+
+  const authHeader = req.headers.get('authorization')
+  const cronHeader = req.headers.get('x-cron-secret')
+
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+
+  return bearerToken === secret || cronHeader === secret
 }
 
 async function callInternal(
