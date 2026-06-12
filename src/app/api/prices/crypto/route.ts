@@ -84,7 +84,10 @@ export async function POST() {
     return NextResponse.json({ success: true, updated: 0, note: 'No prices from CoinGecko' })
   }
 
-  const { error } = await svc.from('price_quotes').insert(inserts)
+  const { error } = await svc.from('price_quotes').upsert(inserts, {
+    onConflict: 'asset_id,quote_date,source',
+    ignoreDuplicates: false,
+  })
 
   if (error) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
