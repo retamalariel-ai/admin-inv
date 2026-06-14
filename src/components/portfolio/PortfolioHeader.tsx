@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PlusCircle } from 'lucide-react'
+import { PlusCircle, FileDown } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import TransactionDialog from '@/components/transactions/TransactionDialog'
@@ -60,13 +60,25 @@ export default function PortfolioHeader({ portfolio, clientId, portfolioId }: Po
               <p className="mt-2 text-sm text-slate-500">{portfolio.description}</p>
             )}
           </div>
-          <Button
-            onClick={() => setTxOpen(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white shrink-0"
-          >
-            <PlusCircle className="h-4 w-4 mr-2" />
-            Nueva Transacción
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={`/api/reports/portfolio/${portfolioId}`}
+              target="_blank"
+              download
+            >
+              <Button variant="outline" className="border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700">
+                <FileDown className="h-4 w-4 mr-2" />
+                Reporte PDF
+              </Button>
+            </a>
+            <Button
+              onClick={() => setTxOpen(true)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+            >
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Nueva Transacción
+            </Button>
+          </div>
         </div>
       </div>
 
