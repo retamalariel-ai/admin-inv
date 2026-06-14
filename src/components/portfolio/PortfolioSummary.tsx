@@ -5,16 +5,19 @@ import { formatARS, formatUSD, formatPct } from '@/lib/utils/calculations'
 
 interface PortfolioSummaryProps {
   positions: {
-    market_value_ars:          number | null
-    market_value_usd:          number | null
-    unrealized_pnl_ars:        number | null
-    unrealized_pnl_usd:        number | null
-    fx_gain_loss_ars:          number | null
+    market_value_ars:        number | null
+    market_value_usd:        number | null
+    unrealized_pnl_ars:      number | null
+    unrealized_pnl_usd:      number | null
+    fx_gain_loss_ars:        number | null
+    spread_vs_breakeven_pct: number | null
+    daily_pnl_ars?:          number | null
+  }[]
+  allPositions: {
     realized_gain_loss_ars:    number | null
+    realized_gain_loss_usd:    number | null
     total_income_received_ars: number | null
-    total_return_ars:          number | null
-    spread_vs_breakeven_pct:   number | null
-    daily_pnl_ars?:            number | null
+    total_income_received_usd: number | null
   }[]
 }
 
@@ -50,15 +53,17 @@ function MetricCard({
   )
 }
 
-export default function PortfolioSummary({ positions }: PortfolioSummaryProps) {
+export default function PortfolioSummary({ positions, allPositions }: PortfolioSummaryProps) {
   const aumARS      = sum(positions.map(p => p.market_value_ars))
   const aumUSD      = sum(positions.map(p => p.market_value_usd))
   const pnlARS      = sum(positions.map(p => p.unrealized_pnl_ars))
   const pnlUSD      = sum(positions.map(p => p.unrealized_pnl_usd))
   const fxGain      = sum(positions.map(p => p.fx_gain_loss_ars))
-  const realizedARS = sum(positions.map(p => p.realized_gain_loss_ars))
-  const incomeARS   = sum(positions.map(p => p.total_income_received_ars))
-  const totalRetARS = sum(positions.map(p => p.total_return_ars))
+  // Realized + income desde TODAS las posiciones (incluye cerradas)
+  const realizedARS = sum(allPositions.map(p => p.realized_gain_loss_ars))
+  const realizedUSD = sum(allPositions.map(p => p.realized_gain_loss_usd))
+  const incomeARS   = sum(allPositions.map(p => p.total_income_received_ars))
+  const totalRetARS = pnlARS.plus(realizedARS).plus(incomeARS)
 
   const dailyPnlARS    = sum(positions.map(p => p.daily_pnl_ars ?? null))
   const hasDailyData   = positions.some(p => p.daily_pnl_ars != null)
@@ -126,9 +131,11 @@ export default function PortfolioSummary({ positions }: PortfolioSummaryProps) {
         />
 
         <MetricCard
-          label="P&L Realizado ARS"
+          label="P&L Realizado"
           value={formatARS(realizedARS)}
+          sub={formatUSD(realizedUSD)}
           positive={realizedARS.gte(0)}
+          subPositive={realizedUSD.gte(0)}
         />
         <MetricCard
           label="Income ARS"
