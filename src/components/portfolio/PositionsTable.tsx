@@ -161,6 +161,29 @@ costo de compra original.`
 
 const PNL_VIEWS = ['ARS', 'HOY', 'USD', 'DETALLE'] as const
 
+const TYPE_ORDER: Partial<Record<AssetType, number>> = {
+  BONO_SOBERANO:       1,
+  BONO_SUBSOBERANO:    2,
+  ON:                  3,
+  LETES:               4,
+  LECAP:               5,
+  ACCION_LOCAL:        6,
+  CEDEAR:              7,
+  FCI_MONEY_MARKET:    8,
+  FCI_RENTA_FIJA:      9,
+  FCI_RENTA_VARIABLE:  10,
+  FCI_RENTA_MIXTA:     11,
+  CRYPTO_SPOT:         12,
+  CRYPTO_STABLECOIN:   13,
+  CRYPTO_EARN:         14,
+  CRYPTO_DEFI_LP:      15,
+  CRYPTO_DEFI_STAKE:   16,
+  CRYPTO_DEFI_LENDING: 17,
+  CASH_ARS:            18,
+  CASH_USD_MEP:        19,
+  CASH_USD_CCL:        20,
+}
+
 const FILTER_GROUPS: { label: string; types: AssetType[] }[] = [
   {
     label: 'Renta Variable',
@@ -194,11 +217,17 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
     setTxDialogOpen(true)
   }
 
-  const filtered = activeGroup
+  const filtered = (activeGroup
     ? positions.filter(p =>
         FILTER_GROUPS.find(g => g.label === activeGroup)?.types.includes(p.asset_type as AssetType)
       )
     : positions
+  ).slice().sort((a, b) => {
+    const orderA = TYPE_ORDER[a.asset_type as AssetType] ?? 99
+    const orderB = TYPE_ORDER[b.asset_type as AssetType] ?? 99
+    if (orderA !== orderB) return orderA - orderB
+    return (b.market_value_ars ?? 0) - (a.market_value_ars ?? 0)
+  })
 
   const colSpan = pnlView === 'DETALLE' ? 12 : 11
 
