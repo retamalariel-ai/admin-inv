@@ -254,8 +254,8 @@ export default function ImportarCryptoPage() {
     const qty      = parseFloat(item.overrideQty   ?? String(item.row.quantity))
     const price    = parseFloat(item.overridePrice ?? String(item.row.price ?? 0))
     const totalUSD = qty * price || (item.row.total ?? 0)
-    // gross_amount / net_amount stored in ARS (= USDT total × CCL)
-    const totalARS = ccl != null ? totalUSD * ccl : totalUSD
+    // Store amounts in USD (USDT) — the trigger converts to ARS using fx_rate_mep.
+    // Storing ARS here with currency='USDT' causes the trigger to double-convert.
 
     const { error } = await supabase.from('transactions').insert({
       portfolio_id:             selectedPortfolio,
@@ -265,11 +265,11 @@ export default function ImportarCryptoPage() {
       settlement_date:          item.row.date,
       quantity:                 qty,
       price_per_unit:           price,
-      gross_amount:             totalARS,
+      gross_amount:             totalUSD,
       alyce_commission:         0,
       gas_fee_amount:           item.row.fee ?? 0,
       other_fees:               0,
-      net_amount:               totalARS,
+      net_amount:               totalUSD,
       currency:                 toCurrency(item.row.quoteCoin),
       fx_rate_mep:              mep,
       fx_rate_ccl:              ccl,
