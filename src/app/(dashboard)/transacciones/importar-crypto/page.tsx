@@ -22,6 +22,7 @@ import type { Database } from '@/types/database.types'
 
 type TxType    = Database['public']['Enums']['transaction_type']
 type AssetType = Database['public']['Enums']['asset_type']
+type Currency  = Database['public']['Enums']['currency']
 
 interface Portfolio {
   id:          string
@@ -109,6 +110,21 @@ function fmtNet(qty: number, coin: string) {
   const sign = qty >= 0 ? '+' : ''
   const decimals = Math.abs(qty) < 1 ? 6 : 4
   return `${sign}${qty.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: decimals })} ${coin}`
+}
+
+// Maps coin symbols to valid currency enum values.
+// 'USD' and unknown coins fall back to 'USDT' / 'CRYPTO_OTHER'.
+const COIN_TO_CURRENCY: Partial<Record<string, Currency>> = {
+  USDT: 'USDT', USDC: 'USDC', DAI: 'DAI',
+  BUSD: 'USDT', FDUSD: 'USDT', USD: 'USDT',   // USD is not in enum → USDT
+  BTC: 'BTC', ETH: 'ETH', BNB: 'BNB',
+  ARS: 'ARS', MATIC: 'MATIC', ADA: 'ADA',
+  SOL: 'CRYPTO_OTHER', XRP: 'CRYPTO_OTHER', LINK: 'CRYPTO_OTHER',
+  LTC: 'CRYPTO_OTHER', NEXO: 'CRYPTO_OTHER',
+}
+
+function toCurrency(coin: string): Currency {
+  return COIN_TO_CURRENCY[coin.toUpperCase()] ?? 'CRYPTO_OTHER'
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -239,7 +255,7 @@ export default function ImportarCryptoPage() {
       gas_fee_amount:           item.row.fee ?? 0,
       other_fees:               0,
       net_amount:               total,
-      currency:                 'USD',
+      currency:                 toCurrency(item.row.quoteCoin),
       fx_rate_mep:              null,
       fx_rate_ccl:              null,
       residual_factor_at_trade: 1,
@@ -303,7 +319,7 @@ export default function ImportarCryptoPage() {
       gas_fee_amount:           fee,
       other_fees:               0,
       net_amount:               qty * price,
-      currency:                 'USD',
+      currency:                 'USDT',
       fx_rate_mep:              null,
       fx_rate_ccl:              null,
       residual_factor_at_trade: 1,
