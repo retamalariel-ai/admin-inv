@@ -78,8 +78,9 @@ const BOND_TYPES = ['BONO_SOBERANO', 'BONO_SUBSOBERANO', 'ON', 'LETES', 'LECAP']
 
 export default function ConfigDashboard({ assets, fxRates, latestPrices, systemStats }: Props) {
   const router    = useRouter()
-  const [loading, setLoading] = useState<string | null>(null)
-  const [editRf,  setEditRf]  = useState<Record<string, string>>({})
+  const [loading,        setLoading]        = useState<string | null>(null)
+  const [editRf,         setEditRf]         = useState<Record<string, string>>({})
+  const [loadingHistory, setLoadingHistory] = useState(false)
 
   async function callEndpoint(path: string, method: 'POST' | 'GET' = 'POST', label: string) {
     setLoading(label)
@@ -323,6 +324,64 @@ export default function ConfigDashboard({ assets, fxRates, latestPrices, systemS
 
       {/* ── TAB 3: Tipos de Cambio ──────────────────────────────────────── */}
       <TabsContent value="fx" className="space-y-4">
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            disabled={loadingHistory}
+            onClick={async () => {
+              setLoadingHistory(true)
+              try {
+                const res  = await fetch('/api/fx-rates/history', {
+                  method:  'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ days: 90 }),
+                })
+                const data = await res.json() as { daysProcessed?: number; error?: string }
+                if (res.ok) {
+                  toast.success(`Historial cargado: ${data.daysProcessed} días`)
+                  router.refresh()
+                } else {
+                  toast.error(`Error: ${data.error ?? 'desconocido'}`)
+                }
+              } catch {
+                toast.error('Error cargando historial')
+              } finally {
+                setLoadingHistory(false)
+              }
+            }}
+          >
+            {loadingHistory ? 'Cargando…' : 'Cargar últimos 90 días'}
+          </Button>
+
+          <Button
+            variant="outline"
+            disabled={loadingHistory}
+            onClick={async () => {
+              setLoadingHistory(true)
+              try {
+                const res  = await fetch('/api/fx-rates/history', {
+                  method:  'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body:    JSON.stringify({ days: 365 }),
+                })
+                const data = await res.json() as { daysProcessed?: number; error?: string }
+                if (res.ok) {
+                  toast.success(`Historial cargado: ${data.daysProcessed} días`)
+                  router.refresh()
+                } else {
+                  toast.error(`Error: ${data.error ?? 'desconocido'}`)
+                }
+              } catch {
+                toast.error('Error cargando historial')
+              } finally {
+                setLoadingHistory(false)
+              }
+            }}
+          >
+            {loadingHistory ? 'Cargando…' : 'Cargar último año'}
+          </Button>
+        </div>
+
         <p className="text-sm text-slate-400">Últimos 30 registros</p>
         <div className="rounded-lg border border-slate-700 overflow-x-auto">
           <Table>
