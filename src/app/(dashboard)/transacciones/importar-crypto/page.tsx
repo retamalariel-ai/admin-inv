@@ -238,9 +238,24 @@ export default function ImportarCryptoPage() {
     setQueue(prev => prev.map(it => it.id === item.id ? { ...it, status: 'saving' } : it))
     const supabase = createClient()
 
-    const qty   = parseFloat(item.overrideQty   ?? String(item.row.quantity))
-    const price = parseFloat(item.overridePrice ?? String(item.row.price ?? 0))
-    const total = qty * price || (item.row.total ?? 0)
+    // Lookup closest CCL/MEP at or before the trade date
+    const { data: fx } = await supabase
+      .from('fx_rates')
+      .select('rate_ccl, rate_mep, rate_date')
+      .lte('rate_date', item.row.date)
+      .not('rate_ccl', 'is', null)
+      .order('rate_date', { ascending: false })
+      .limit(1)
+      .single()
+
+    const ccl = fx?.rate_ccl != null ? Number(fx.rate_ccl) : null
+    const mep = fx?.rate_mep != null ? Number(fx.rate_mep) : null
+
+    const qty      = parseFloat(item.overrideQty   ?? String(item.row.quantity))
+    const price    = parseFloat(item.overridePrice ?? String(item.row.price ?? 0))
+    const totalUSD = qty * price || (item.row.total ?? 0)
+    // gross_amount / net_amount stored in ARS (= USDT total × CCL)
+    const totalARS = ccl != null ? totalUSD * ccl : totalUSD
 
     const { error } = await supabase.from('transactions').insert({
       portfolio_id:             selectedPortfolio,
@@ -250,14 +265,14 @@ export default function ImportarCryptoPage() {
       settlement_date:          item.row.date,
       quantity:                 qty,
       price_per_unit:           price,
-      gross_amount:             total,
+      gross_amount:             totalARS,
       alyce_commission:         0,
       gas_fee_amount:           item.row.fee ?? 0,
       other_fees:               0,
-      net_amount:               total,
+      net_amount:               totalARS,
       currency:                 toCurrency(item.row.quoteCoin),
-      fx_rate_mep:              null,
-      fx_rate_ccl:              null,
+      fx_rate_mep:              mep,
+      fx_rate_ccl:              ccl,
       residual_factor_at_trade: 1,
       notes: [
         `Fuente: ${item.row.source.toUpperCase()}`,
