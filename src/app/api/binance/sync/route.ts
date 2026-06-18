@@ -48,7 +48,6 @@ async function fetchBinanceTrades(symbol: string): Promise<BinanceTrade[]> {
   const params = new URLSearchParams({
     symbol,
     limit:     '1000',
-    startTime: new Date('2026-05-28T00:00:00Z').getTime().toString(),
     timestamp: Date.now().toString(),
   })
   const qs  = params.toString()
