@@ -45,7 +45,7 @@ export default async function PortfolioPage(props: PageProps<'/clientes/[id]/por
         <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
           Posiciones ({rows.length})
         </h2>
-        <PositionsTable portfolioId={portfolioId} positions={rows} />
+        <PositionsTable portfolioId={portfolioId} positions={rows} baseCurrency={portfolio.base_currency} />
       </div>
 
       <ClosedPositionsTable positions={closedPositions} />

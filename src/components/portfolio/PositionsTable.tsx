@@ -21,8 +21,9 @@ type Position = Database['public']['Views']['portfolio_valuation_unified']['Row'
 type AssetType = Database['public']['Enums']['asset_type']
 
 interface PositionsTableProps {
-  portfolioId: string
-  positions:   Position[]
+  portfolioId:   string
+  positions:     Position[]
+  baseCurrency?: string
 }
 
 const ASSET_LABELS: Record<AssetType, string> = {
@@ -203,13 +204,15 @@ const FILTER_GROUPS: { label: string; types: AssetType[] }[] = [
   },
 ]
 
-export default function PositionsTable({ portfolioId, positions }: PositionsTableProps) {
+export default function PositionsTable({ portfolioId, positions, baseCurrency = 'ARS' }: PositionsTableProps) {
   const router = useRouter()
   const [activeGroup, setActiveGroup]         = useState<string | null>(null)
   const [txDialogOpen, setTxDialogOpen]       = useState(false)
   const [selectedAssetId, setSelectedAssetId] = useState<string | undefined>()
   const [selectedTicker, setSelectedTicker]   = useState<string | undefined>()
   const [pnlView, setPnlView]                 = usePnLView()
+
+  const isUsdBase = ['USDT', 'USD_MEP', 'USD_CCL'].includes(baseCurrency)
 
   function openTxFor(pos: Position) {
     setSelectedAssetId(pos.asset_id ?? undefined)
@@ -226,7 +229,9 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
     const orderA = TYPE_ORDER[a.asset_type as AssetType] ?? 99
     const orderB = TYPE_ORDER[b.asset_type as AssetType] ?? 99
     if (orderA !== orderB) return orderA - orderB
-    return (b.market_value_ars ?? 0) - (a.market_value_ars ?? 0)
+    return isUsdBase
+      ? (b.market_value_usd ?? 0) - (a.market_value_usd ?? 0)
+      : (b.market_value_ars ?? 0) - (a.market_value_ars ?? 0)
   })
 
   const colSpan = pnlView === 'DETALLE' ? 12 : 11
@@ -297,9 +302,9 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Nombre</TableHead>
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Cantidad</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">PPP ARS</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'PPP USD' : 'PPP ARS'}</TableHead>
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Precio actual</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Valor ARS</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'Valor USD' : 'Valor ARS'}</TableHead>
 
               {pnlView === 'ARS' && (
                 <>
@@ -394,13 +399,17 @@ export default function PositionsTable({ portfolioId, positions }: PositionsTabl
                       {formatQty(pos)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-slate-400 text-sm">
-                      {formatPPP(pos)}
+                      {isUsdBase
+                        ? (pos.ppp_usd != null ? formatUSD(new Decimal(pos.ppp_usd)) : '—')
+                        : formatPPP(pos)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-slate-200">
                       {formatPrice(pos)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold text-white">
-                      {pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—'}
+                      {isUsdBase
+                        ? (pos.market_value_usd != null ? formatUSD(new Decimal(pos.market_value_usd)) : '—')
+                        : (pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—')}
                     </TableCell>
 
                     {pnlView === 'ARS' && (
