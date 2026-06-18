@@ -3,7 +3,10 @@
 import Decimal from 'decimal.js'
 import { formatARS, formatUSD, formatPct } from '@/lib/utils/calculations'
 
+type BaseCurrency = 'ARS' | 'USD_MEP' | 'USD_CCL' | 'USDT' | string
+
 interface PortfolioSummaryProps {
+  baseCurrency?: BaseCurrency
   positions: {
     market_value_ars:        number | null
     market_value_usd:        number | null
@@ -20,6 +23,8 @@ interface PortfolioSummaryProps {
     total_income_received_usd: number | null
   }[]
 }
+
+const USD_BASE_CURRENCIES: BaseCurrency[] = ['USD_MEP', 'USD_CCL', 'USDT']
 
 function sum(arr: (number | null)[]): Decimal {
   return arr.reduce((s, v) => s.plus(new Decimal(v ?? 0)), new Decimal(0))
@@ -53,17 +58,20 @@ function MetricCard({
   )
 }
 
-export default function PortfolioSummary({ positions, allPositions }: PortfolioSummaryProps) {
+export default function PortfolioSummary({ positions, allPositions, baseCurrency = 'ARS' }: PortfolioSummaryProps) {
+  const isUsdBase = USD_BASE_CURRENCIES.includes(baseCurrency)
+
   const aumARS      = sum(positions.map(p => p.market_value_ars))
   const aumUSD      = sum(positions.map(p => p.market_value_usd))
   const pnlARS      = sum(positions.map(p => p.unrealized_pnl_ars))
   const pnlUSD      = sum(positions.map(p => p.unrealized_pnl_usd))
   const fxGain      = sum(positions.map(p => p.fx_gain_loss_ars))
-  // Realized + income desde TODAS las posiciones (incluye cerradas)
   const realizedARS = sum(allPositions.map(p => p.realized_gain_loss_ars))
   const realizedUSD = sum(allPositions.map(p => p.realized_gain_loss_usd))
   const incomeARS   = sum(allPositions.map(p => p.total_income_received_ars))
+  const incomeUSD   = sum(allPositions.map(p => p.total_income_received_usd))
   const totalRetARS = pnlARS.plus(realizedARS).plus(incomeARS)
+  const totalRetUSD = pnlUSD.plus(realizedUSD).plus(incomeUSD)
 
   const dailyPnlARS    = sum(positions.map(p => p.daily_pnl_ars ?? null))
   const hasDailyData   = positions.some(p => p.daily_pnl_ars != null)
@@ -76,12 +84,10 @@ export default function PortfolioSummary({ positions, allPositions }: PortfolioS
   const aboveBreakEven = withBreakEven.length - belowBreakEven
   const allAbove       = belowBreakEven === 0 && withBreakEven.length > 0
 
-  // Divergencia: gana en ARS pero pierde en USD (efecto devaluación)
-  const hasDivergence = pnlARS.gt(0) && pnlUSD.lt(0)
+  const hasDivergence = !isUsdBase && pnlARS.gt(0) && pnlUSD.lt(0)
 
   return (
     <div className="space-y-4">
-      {/* Card de advertencia cuando hay divergencia ARS vs USD */}
       {hasDivergence && (
         <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-5">
           <p className="text-amber-400 text-sm font-semibold mb-2">
@@ -100,55 +106,107 @@ export default function PortfolioSummary({ positions, allPositions }: PortfolioS
         </div>
       )}
 
-      {/* Métricas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* AUM: muestra siempre ARS + USD */}
-        <MetricCard
-          label="AUM Total"
-          value={formatARS(aumARS)}
-          sub={formatUSD(aumUSD) + ' MEP'}
-          subPositive={null}
-        />
+        {isUsdBase ? (
+          <>
+            <MetricCard
+              label="AUM Total"
+              value={formatUSD(aumUSD)}
+              sub={formatARS(aumARS)}
+              subPositive={null}
+            />
 
-        {/* Variación del día (1D) — comparable con el broker */}
-        {hasDailyData && (
-          <MetricCard
-            label="Hoy (1D)"
-            value={formatARS(dailyPnlARS)}
-            sub={dailyPct ? formatPct(dailyPct) + ' del portfolio' : 'vs. cierre anterior'}
-            positive={dailyPnlARS.gte(0)}
-            subPositive={null}
-          />
+            {hasDailyData && (
+              <MetricCard
+                label="Hoy (1D)"
+                value={formatARS(dailyPnlARS)}
+                sub={dailyPct ? formatPct(dailyPct) + ' del portfolio' : 'vs. cierre anterior'}
+                positive={dailyPnlARS.gte(0)}
+                subPositive={null}
+              />
+            )}
+
+            <MetricCard
+              label="P&L No Realizado"
+              value={formatUSD(pnlUSD)}
+              sub={formatARS(pnlARS)}
+              positive={pnlUSD.gte(0)}
+              subPositive={pnlARS.gte(0)}
+            />
+
+            <MetricCard
+              label="P&L Realizado"
+              value={formatUSD(realizedUSD)}
+              sub={formatARS(realizedARS)}
+              positive={realizedUSD.gte(0)}
+              subPositive={realizedARS.gte(0)}
+            />
+
+            <MetricCard
+              label="Income USDT"
+              value={formatUSD(incomeUSD)}
+              sub="dividendos + renta"
+              positive={incomeUSD.gte(0)}
+            />
+
+            <MetricCard
+              label="Retorno Total USDT"
+              value={formatUSD(totalRetUSD)}
+              sub="realizado + income"
+              positive={totalRetUSD.gte(0)}
+            />
+          </>
+        ) : (
+          <>
+            <MetricCard
+              label="AUM Total"
+              value={formatARS(aumARS)}
+              sub={formatUSD(aumUSD) + ' MEP'}
+              subPositive={null}
+            />
+
+            {hasDailyData && (
+              <MetricCard
+                label="Hoy (1D)"
+                value={formatARS(dailyPnlARS)}
+                sub={dailyPct ? formatPct(dailyPct) + ' del portfolio' : 'vs. cierre anterior'}
+                positive={dailyPnlARS.gte(0)}
+                subPositive={null}
+              />
+            )}
+
+            <MetricCard
+              label="P&L No Realizado"
+              value={formatARS(pnlARS)}
+              sub={formatUSD(pnlUSD)}
+              positive={pnlARS.gte(0)}
+              subPositive={pnlUSD.gte(0)}
+            />
+
+            <MetricCard
+              label="P&L Realizado"
+              value={formatARS(realizedARS)}
+              sub={formatUSD(realizedUSD)}
+              positive={realizedARS.gte(0)}
+              subPositive={realizedUSD.gte(0)}
+            />
+
+            <MetricCard
+              label="Income ARS"
+              value={formatARS(incomeARS)}
+              sub="dividendos + renta"
+              positive={incomeARS.gte(0)}
+            />
+
+            <MetricCard
+              label="Retorno Total ARS"
+              value={formatARS(totalRetARS)}
+              sub="realizado + income"
+              positive={totalRetARS.gte(0)}
+            />
+          </>
         )}
 
-        {/* P&L no realizado: ARS como valor principal, USD como subtítulo con su propio color */}
-        <MetricCard
-          label="P&L No Realizado"
-          value={formatARS(pnlARS)}
-          sub={formatUSD(pnlUSD)}
-          positive={pnlARS.gte(0)}
-          subPositive={pnlUSD.gte(0)}
-        />
-
-        <MetricCard
-          label="P&L Realizado"
-          value={formatARS(realizedARS)}
-          sub={formatUSD(realizedUSD)}
-          positive={realizedARS.gte(0)}
-          subPositive={realizedUSD.gte(0)}
-        />
-        <MetricCard
-          label="Income ARS"
-          value={formatARS(incomeARS)}
-          sub="dividendos + renta"
-          positive={incomeARS.gte(0)}
-        />
-        <MetricCard
-          label="Retorno Total ARS"
-          value={formatARS(totalRetARS)}
-          sub="realizado + income"
-          positive={totalRetARS.gte(0)}
-        />
         {withBreakEven.length > 0 && (
           <MetricCard
             label="Sobre break-even"

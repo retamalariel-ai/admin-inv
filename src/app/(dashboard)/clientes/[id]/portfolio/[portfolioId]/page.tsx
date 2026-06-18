@@ -39,7 +39,7 @@ export default async function PortfolioPage(props: PageProps<'/clientes/[id]/por
   return (
     <div className="space-y-8">
       <PortfolioHeader portfolio={portfolio} clientId={id} portfolioId={portfolioId} />
-      <PortfolioSummary positions={rows} allPositions={allPos} />
+      <PortfolioSummary positions={rows} allPositions={allPos} baseCurrency={portfolio.base_currency} />
 
       <div>
         <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">

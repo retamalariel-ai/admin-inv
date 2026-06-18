@@ -36,6 +36,7 @@ const BASE_CURRENCIES = [
   { value: 'ARS',     label: 'ARS — Pesos' },
   { value: 'USD_MEP', label: 'USD MEP' },
   { value: 'USD_CCL', label: 'USD CCL' },
+  { value: 'USDT',    label: 'USDT — Crypto' },
 ]
 
 export default function NewPortfolioDialog({
@@ -67,7 +68,7 @@ export default function NewPortfolioDialog({
       client_id:          clientId,
       name:               form.name.trim(),
       description:        form.description.trim() || null,
-      base_currency:      form.base_currency as 'ARS' | 'USD_MEP' | 'USD_CCL',
+      base_currency:      form.base_currency as 'ARS' | 'USD_MEP' | 'USD_CCL' | 'USDT',
       custodian_type:     form.custodian_type,
       custodian_name:     form.custodian_name.trim(),
       account_identifier: form.account_identifier.trim() || null,
