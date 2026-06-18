@@ -603,9 +603,11 @@ export type Database = {
           asset_id: string
           created_at: string
           currency: Database["public"]["Enums"]["currency"]
+          daily_change_pct: number | null
           id: string
           is_closing: boolean
           market_cap: number | null
+          previous_close: number | null
           price: number
           price_ask: number | null
           price_bid: number | null
@@ -621,9 +623,11 @@ export type Database = {
           asset_id: string
           created_at?: string
           currency: Database["public"]["Enums"]["currency"]
+          daily_change_pct?: number | null
           id?: string
           is_closing?: boolean
           market_cap?: number | null
+          previous_close?: number | null
           price: number
           price_ask?: number | null
           price_bid?: number | null
@@ -639,9 +643,11 @@ export type Database = {
           asset_id?: string
           created_at?: string
           currency?: Database["public"]["Enums"]["currency"]
+          daily_change_pct?: number | null
           id?: string
           is_closing?: boolean
           market_cap?: number | null
+          previous_close?: number | null
           price?: number
           price_ask?: number | null
           price_bid?: number | null
@@ -680,6 +686,7 @@ export type Database = {
           created_at: string
           crypto_price_usd: number | null
           currency: Database["public"]["Enums"]["currency"]
+          external_id: string | null
           fx_rate_ccl: number | null
           fx_rate_mep: number | null
           fx_rate_oficial: number | null
@@ -714,6 +721,7 @@ export type Database = {
           created_at?: string
           crypto_price_usd?: number | null
           currency: Database["public"]["Enums"]["currency"]
+          external_id?: string | null
           fx_rate_ccl?: number | null
           fx_rate_mep?: number | null
           fx_rate_oficial?: number | null
@@ -748,6 +756,7 @@ export type Database = {
           created_at?: string
           crypto_price_usd?: number | null
           currency?: Database["public"]["Enums"]["currency"]
+          external_id?: string | null
           fx_rate_ccl?: number | null
           fx_rate_mep?: number | null
           fx_rate_oficial?: number | null
@@ -834,6 +843,7 @@ export type Database = {
           portfolio_count: number | null
           total_aum_ars: number | null
           total_aum_usd: number | null
+          total_daily_pnl_ars: number | null
           total_return_ars: number | null
           total_return_usd: number | null
           total_unrealized_pnl_ars: number | null
@@ -849,12 +859,16 @@ export type Database = {
           asset_type: Database["public"]["Enums"]["asset_type"] | null
           avg_fx_mep_at_cost: number | null
           blockchain_network: string | null
+          break_even_price_ars: number | null
+          break_even_price_usd: number | null
           client_id: string | null
           client_name: string | null
           current_price: number | null
           current_residual_factor: number | null
           custodian_name: string | null
           custodian_type: string | null
+          daily_change_pct: number | null
+          daily_pnl_ars: number | null
           first_purchase_date: string | null
           fx_ccl_today: number | null
           fx_date: string | null
@@ -868,6 +882,7 @@ export type Database = {
           portfolio_name: string | null
           ppp_ars: number | null
           ppp_usd: number | null
+          previous_close: number | null
           price_date: string | null
           price_gain_loss_ars: number | null
           price_source: string | null
@@ -876,6 +891,8 @@ export type Database = {
           realized_gain_loss_ars: number | null
           realized_gain_loss_usd: number | null
           settlement_currency: Database["public"]["Enums"]["currency"] | null
+          spread_vs_breakeven_ars: number | null
+          spread_vs_breakeven_pct: number | null
           ticker: string | null
           total_cost_basis_ars: number | null
           total_cost_basis_usd: number | null
@@ -886,10 +903,6 @@ export type Database = {
           unrealized_pnl_ars: number | null
           unrealized_pnl_ars_pct: number | null
           unrealized_pnl_usd: number | null
-          break_even_price_ars: number | null
-          break_even_price_usd: number | null
-          spread_vs_breakeven_ars: number | null
-          spread_vs_breakeven_pct: number | null
         }
         Relationships: []
       }
