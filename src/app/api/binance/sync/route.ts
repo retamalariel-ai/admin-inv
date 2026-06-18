@@ -45,9 +45,14 @@ function extractBase(symbol: string): string {
 async function fetchBinanceTrades(symbol: string): Promise<BinanceTrade[]> {
   const apiKey    = process.env.BINANCE_API_KEY!
   const secretKey = process.env.BINANCE_API_SECRET!
-  const timestamp = Date.now()
-  const qs        = `symbol=${symbol}&timestamp=${timestamp}`
-  const sig       = crypto.createHmac('sha256', secretKey).update(qs).digest('hex')
+  const params = new URLSearchParams({
+    symbol,
+    limit:     '1000',
+    startTime: new Date('2026-05-28T00:00:00Z').getTime().toString(),
+    timestamp: Date.now().toString(),
+  })
+  const qs  = params.toString()
+  const sig = crypto.createHmac('sha256', secretKey).update(qs).digest('hex')
 
   const res = await fetch(
     `https://api.binance.com/api/v3/myTrades?${qs}&signature=${sig}`,
