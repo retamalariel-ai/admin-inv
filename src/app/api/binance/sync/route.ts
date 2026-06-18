@@ -12,6 +12,10 @@ export const maxDuration = 60   // Vercel Pro max
 
 const SYMBOLS = ['SOLUSDT', 'XRPUSDT', 'LTCUSDT', 'LINKUSDT'] as const
 
+// Trades anteriores a esta fecha fueron importados manualmente — no tocar.
+const SYNC_START_DATE = '2026-06-18'
+const SYNC_START_MS   = new Date(`${SYNC_START_DATE}T00:00:00Z`).getTime().toString()
+
 interface BinanceTrade {
   id:              number
   orderId:         number
@@ -51,6 +55,7 @@ async function fetchBinanceTrades(symbol: string): Promise<BinanceTrade[]> {
   const params = new URLSearchParams({
     symbol,
     limit:     '1000',
+    startTime: SYNC_START_MS,
     timestamp: Date.now().toString(),
   })
   const qs  = params.toString()
