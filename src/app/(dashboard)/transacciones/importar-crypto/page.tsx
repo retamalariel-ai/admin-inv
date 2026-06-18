@@ -141,6 +141,9 @@ export default function ImportarCryptoPage() {
   const [safepalForm, setSafepalForm]           = useState<SafePalForm>(EMPTY_SAFEPAL)
   const [safepalAsset, setSafepalAsset]         = useState<Asset | null>(null)
   const [safepalSaving, setSafepalSaving]       = useState(false)
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [syncResult, setSyncResult] = useState<{ synced: number; skipped: number; errors: string[] } | null>(null)
+  const [lastSyncAt, setLastSyncAt]   = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -226,7 +229,7 @@ export default function ImportarCryptoPage() {
       handleCSV(text, activeTab as 'binance' | 'nexo')
     },
     onDropRejected: () => toast.error('Solo se aceptan archivos CSV'),
-    disabled:       activeTab === 'safepal',
+    disabled:       activeTab !== 'nexo',
   })
 
   // ── Save helpers ────────────────────────────────────────────────────────────
@@ -307,6 +310,30 @@ export default function ImportarCryptoPage() {
       ok++
     }
     toast.success(`${ok} operaciones importadas`)
+  }
+
+  async function handleBinanceSync() {
+    if (!selectedPortfolio) { toast.error('Seleccioná un portfolio'); return }
+    setSyncStatus('loading')
+    setSyncResult(null)
+    try {
+      const res  = await fetch('/api/binance/sync', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ portfolioId: selectedPortfolio }),
+      })
+      const data = await res.json() as { synced: number; skipped: number; errors: string[] }
+      if (!res.ok) throw new Error(data.errors?.[0] ?? 'Error desconocido')
+      setSyncResult(data)
+      setSyncStatus('success')
+      setLastSyncAt(new Date().toLocaleString('es-AR'))
+      toast.success(`${data.synced} operaciones importadas`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setSyncStatus('error')
+      setSyncResult({ synced: 0, skipped: 0, errors: [msg] })
+      toast.error(msg)
+    }
   }
 
   // ── SafePal save ─────────────────────────────────────────────────────────────
@@ -395,13 +422,15 @@ export default function ImportarCryptoPage() {
               setSummary([])
               setSelectedCoins(new Set())
               setParseErrors([])
+              setSyncStatus('idle')
+              setSyncResult(null)
             }}
             className={cn(
               'px-4 py-1.5 text-sm rounded-md font-medium transition-colors',
               activeTab === tab ? 'bg-emerald-700 text-white' : 'text-slate-400 hover:text-slate-200',
             )}
           >
-            {tab === 'binance' ? 'Binance CSV' : tab === 'nexo' ? 'Nexo CSV' : 'SafePal Manual'}
+            {tab === 'binance' ? 'Binance' : tab === 'nexo' ? 'Nexo CSV' : 'SafePal Manual'}
           </button>
         ))}
       </div>
@@ -424,8 +453,68 @@ export default function ImportarCryptoPage() {
         </Select>
       </div>
 
-      {/* ── BINANCE / NEXO TABS ── */}
-      {activeTab !== 'safepal' && (
+      {/* ── BINANCE SYNC TAB ── */}
+      {activeTab === 'binance' && (
+        <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-300">Sincronización automática</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Importa operaciones directamente desde la API de Binance.{' '}
+                Pares: SOLUSDT · XRPUSDT · LTCUSDT · LINKUSDT
+              </p>
+            </div>
+            <Button
+              onClick={handleBinanceSync}
+              disabled={!selectedPortfolio || syncStatus === 'loading'}
+              className="bg-emerald-700 hover:bg-emerald-600 text-white gap-2"
+            >
+              {syncStatus === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {syncStatus === 'loading' ? 'Sincronizando…' : 'Sincronizar con Binance'}
+            </Button>
+          </div>
+
+          {lastSyncAt && (
+            <p className="text-xs text-slate-500">Última sincronización: {lastSyncAt}</p>
+          )}
+
+          {syncStatus === 'success' && syncResult && (
+            <div className="rounded-lg bg-emerald-950/20 border border-emerald-800 p-4 space-y-2">
+              <p className="text-sm font-semibold text-emerald-400">Sincronización completada</p>
+              <div className="flex gap-6 text-sm text-slate-300">
+                <span>
+                  <span className="text-emerald-400 font-semibold">{syncResult.synced}</span>{' '}
+                  operaciones importadas
+                </span>
+                <span>
+                  <span className="text-slate-400 font-semibold">{syncResult.skipped}</span>{' '}
+                  ya existían
+                </span>
+              </div>
+              {syncResult.errors.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs text-amber-400 font-semibold">Advertencias:</p>
+                  {syncResult.errors.map((e, i) => (
+                    <p key={i} className="text-xs text-amber-300">{e}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {syncStatus === 'error' && syncResult && (
+            <div className="rounded-lg bg-red-950/20 border border-red-800 p-4 space-y-1">
+              <p className="text-xs text-red-400 font-semibold uppercase tracking-wide">Error</p>
+              {syncResult.errors.map((e, i) => (
+                <p key={i} className="text-xs text-red-300">{e}</p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── NEXO CSV TAB ── */}
+      {activeTab === 'nexo' && (
         <>
           {/* Dropzone */}
           {queue.length === 0 && (
@@ -443,14 +532,10 @@ export default function ImportarCryptoPage() {
               <FileUp className="h-8 w-8 text-slate-500" />
               <div>
                 <p className="text-slate-300 text-sm font-medium">
-                  {isDragActive
-                    ? 'Soltá el CSV acá'
-                    : `Arrastrá el CSV de ${activeTab === 'binance' ? 'Binance Spot' : 'Nexo'} o hacé click`}
+                  {isDragActive ? 'Soltá el CSV acá' : 'Arrastrá el CSV de Nexo o hacé click'}
                 </p>
                 <p className="text-slate-600 text-xs mt-1">
-                  {activeTab === 'binance'
-                    ? 'Binance → Órdenes → Historial de Órdenes Spot → Exportar (EN o ES)'
-                    : 'Nexo → Transacciones → Exportar CSV'}
+                  Nexo → Transacciones → Exportar CSV
                 </p>
               </div>
             </div>
@@ -730,6 +815,7 @@ export default function ImportarCryptoPage() {
       )}
 
       {/* ── SAFEPAL TAB ── */}
+
       {activeTab === 'safepal' && (
         <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-5 space-y-4">
           <h2 className="text-sm font-semibold text-slate-300">Cargar operación manual SafePal</h2>
