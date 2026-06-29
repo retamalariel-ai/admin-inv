@@ -13,7 +13,7 @@ export const maxDuration = 60   // Vercel Pro max
 const SYMBOLS = ['SOLUSDT', 'XRPUSDT', 'LTCUSDT', 'LINKUSDT'] as const
 
 // Trades anteriores a esta fecha fueron importados manualmente — no tocar.
-const SYNC_START_DATE = '2026-06-18'
+const SYNC_START_DATE = '2026-06-21'
 const SYNC_START_MS   = new Date(`${SYNC_START_DATE}T00:00:00Z`).getTime().toString()
 
 interface BinanceTrade {

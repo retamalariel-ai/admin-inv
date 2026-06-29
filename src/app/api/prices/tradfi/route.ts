@@ -47,7 +47,7 @@ function priceCurrency(ticker: string, assetType: AssetType): Currency {
   return 'ARS'
 }
 
-type AssetRow = { id: string; ticker: string; asset_type: string; currency: string }
+type AssetRow = { id: string; ticker: string; asset_type: string; currency: string; underlying_ticker: string | null }
 type DB       = ReturnType<typeof getServiceClient>
 
 // ── POST — actualiza todos los precios TradFi ──────────────────────────────
@@ -58,7 +58,7 @@ export async function POST() {
 
   const { data: assets, error: assetErr } = await supabase
     .from('assets')
-    .select('id, ticker, asset_type, currency')
+    .select('id, ticker, asset_type, currency, underlying_ticker')
     .eq('is_active', true)
     .not('asset_type', 'in', `(${EXCLUDED_TYPES.join(',')})`)
 
@@ -102,7 +102,12 @@ async function fetchFromIOL(
 ) {
   const rates = await calculateRatesFromIOL()
 
-  const iolTickers = [...new Set(assets.map(a => toIOLTicker(a.ticker)))]
+  // underlying_ticker se usa cuando el ticker en DB difiere del ticker en IOL/BYMA
+  // Ejemplo: MCDD (Cocos) → MCD (IOL)
+  const resolveIOLTicker = (a: AssetRow) =>
+    a.underlying_ticker ? a.underlying_ticker.toUpperCase() : toIOLTicker(a.ticker)
+
+  const iolTickers = [...new Set(assets.map(resolveIOLTicker))]
   const quotes     = await getIOLQuotes(iolTickers)
 
   // Log del primer quote completo para debug
@@ -112,7 +117,7 @@ async function fetchFromIOL(
   }
 
   const inserts = assets.flatMap(a => {
-    const iolTicker = toIOLTicker(a.ticker)
+    const iolTicker = resolveIOLTicker(a)
     const q         = quotes.get(iolTicker.toUpperCase())
     if (!q || q.ultimoPrecio <= 0) return []
 
@@ -194,12 +199,13 @@ async function fetchFromPPI(
 ) {
   const rates  = await calculateRatesFromPPI()
   const quotes = await getPPIQuotes(assets.map(a => ({
-    ticker:     a.ticker,
+    ticker:     a.underlying_ticker ?? a.ticker,
     asset_type: a.asset_type as string,
   })))
 
   const inserts = assets.flatMap(a => {
-    const q = quotes.get(a.ticker.toUpperCase())
+    const ppiTicker = (a.underlying_ticker ?? a.ticker).toUpperCase()
+    const q = quotes.get(ppiTicker)
     if (!q || q.price <= 0) return []
 
     const bond = isBond(a.asset_type as AssetType)
