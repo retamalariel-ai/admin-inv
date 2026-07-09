@@ -12,6 +12,12 @@ import {
   DollarSign,
   Settings,
   LogOut,
+  Wallet,
+  ArrowLeftRight,
+  CreditCard,
+  PieChart,
+  RefreshCcw,
+  BarChart3,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import NavItem from './NavItem'
@@ -24,8 +30,14 @@ const NAV_ITEMS = [
   { href: '/transacciones/importar-crypto', icon: Bitcoin,         label: 'Importar Crypto',  indent: true },
   { href: '/capital-markets',               icon: TrendingUp,      label: 'Capital Markets' },
   { href: '/crypto',                    icon: Bitcoin,         label: 'Crypto'          },
-  { href: '/comisiones',                icon: DollarSign,      label: 'Comisiones'      },
-  { href: '/config',                    icon: Settings,        label: 'Configuración'   },
+  { href: '/comisiones',                         icon: DollarSign,      label: 'Comisiones'          },
+  { href: '/finanzas-personales',                icon: Wallet,          label: 'Finanzas Personales' },
+  { href: '/finanzas-personales/transacciones',  icon: ArrowLeftRight,  label: 'Transacciones',  indent: true },
+  { href: '/finanzas-personales/tarjetas',       icon: CreditCard,      label: 'Tarjetas',       indent: true },
+  { href: '/finanzas-personales/presupuesto',    icon: PieChart,        label: 'Presupuesto',    indent: true },
+  { href: '/finanzas-personales/suscripciones',  icon: RefreshCcw,      label: 'Suscripciones',  indent: true },
+  { href: '/finanzas-personales/patrimonio',     icon: BarChart3,       label: 'Patrimonio',     indent: true },
+  { href: '/config',                             icon: Settings,        label: 'Configuración'   },
 ]
 
 interface SidebarProps {
