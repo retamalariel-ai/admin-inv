@@ -1,5 +1,7 @@
 'use client'
 
+import Link from 'next/link'
+import { Landmark } from 'lucide-react'
 import Decimal from 'decimal.js'
 
 export interface PFAccount {
@@ -49,6 +51,18 @@ export default function SaldosCard({ accounts, fxMep }: Props) {
   }, new Decimal(0))
 
   const ordered = ['ARS', 'USD', 'USDT', 'EUR'].filter(c => byCurrency[c] != null)
+
+  if (accounts.length === 0) {
+    return (
+      <div className="rounded-lg bg-card border border-border p-5 flex flex-col items-center justify-center gap-3 min-h-[140px]">
+        <Landmark className="h-7 w-7 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground text-center">Sin cuentas registradas</p>
+        <Link href="/finanzas-personales/cuentas" className="text-xs text-primary underline-offset-2 hover:underline">
+          Agregar una cuenta
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-lg bg-card border border-border p-5 space-y-4">
