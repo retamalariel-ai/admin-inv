@@ -19,7 +19,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ADMIN_INV",
+  title: "CFO Inversiones",
   description: "Plataforma de gestión de inversiones",
 };
 

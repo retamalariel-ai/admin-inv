@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
@@ -66,9 +67,16 @@ export default function Sidebar({ userEmail }: SidebarProps) {
       bg-sidebar border-r border-sidebar-border
     ">
       {/* Logo */}
-      <div className="px-5 py-[18px] border-b border-sidebar-border">
-        <span className="text-[13px] font-semibold tracking-[0.18em] uppercase text-primary">
-          ADMIN_INV
+      <div className="px-4 py-3 border-b border-sidebar-border flex items-center gap-2.5">
+        <Image
+          src="/logo-cfo.jpg"
+          alt="CFO Tech Partners"
+          width={36}
+          height={36}
+          className="rounded-full shrink-0"
+        />
+        <span className="text-[13px] font-semibold tracking-wide text-primary leading-tight">
+          CFO Inversiones
         </span>
       </div>
 

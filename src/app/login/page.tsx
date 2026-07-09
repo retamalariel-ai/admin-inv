@@ -37,7 +37,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm bg-slate-900 border-slate-800">
         <CardHeader className="text-center pb-2">
           <h1 className="text-2xl font-bold tracking-tight text-emerald-500">
-            ADMIN_INV
+            CFO Inversiones
           </h1>
           <p className="text-sm text-slate-400 mt-1">
             Gestión de Carteras de Inversión

@@ -76,7 +76,7 @@ export async function GET(
     closedPositions: closedPositions,
     fxRates,
     generatedAt,
-    managerName: 'ADMIN_INV',
+    managerName: 'CFO Tech Partners',
   })
 
   const dateTag  = generatedAt.toISOString().split('T')[0]
