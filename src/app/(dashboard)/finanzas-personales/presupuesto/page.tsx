@@ -1,18 +1,29 @@
-import { PieChart } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import PresupuestoDashboard from '@/components/personal-finance/PresupuestoDashboard'
 
-export default function PresupuestoPage() {
+export default async function PresupuestoPage() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createClient() as any
+
+  const [{ data: categories }, { data: transactions }] = await Promise.all([
+    supabase
+      .from('personal_categories')
+      .select('id, name, icon, budget_amount')
+      .eq('type', 'EGRESO')
+      .eq('is_active', true)
+      .order('name'),
+
+    supabase
+      .from('personal_transactions')
+      .select('category_id, amount, currency, amount_ars, date')
+      .eq('type', 'EGRESO')
+      .order('date', { ascending: false }),
+  ])
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground tracking-tight">Presupuesto</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Presupuesto mensual por categoría</p>
-      </div>
-
-      <div className="rounded-lg bg-card border border-border flex flex-col items-center justify-center py-20 gap-4">
-        <PieChart className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-base font-medium text-muted-foreground">Próximamente</p>
-        <p className="text-sm text-muted-foreground/60">Seguimiento de presupuesto vs. gasto real por categoría</p>
-      </div>
-    </div>
+    <PresupuestoDashboard
+      initialCategories={categories   ?? []}
+      allTransactions={  transactions ?? []}
+    />
   )
 }
