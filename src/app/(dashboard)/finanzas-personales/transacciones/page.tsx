@@ -1,18 +1,59 @@
-import { ArrowLeftRight } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import TransaccionesDashboard from '@/components/personal-finance/TransaccionesDashboard'
 
-export default function TransaccionesPage() {
+export default async function TransaccionesPage() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createClient() as any
+
+  const [
+    { data: transactions },
+    { data: accounts },
+    { data: categories },
+    { data: fxMep },
+    { data: fxCcl },
+  ] = await Promise.all([
+    supabase
+      .from('personal_transactions')
+      .select('*, personal_categories(name, icon), personal_accounts(name)')
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false }),
+
+    supabase
+      .from('personal_accounts')
+      .select('id, name, currency')
+      .eq('is_active', true)
+      .order('name'),
+
+    supabase
+      .from('personal_categories')
+      .select('id, name, type, icon')
+      .eq('is_active', true)
+      .order('type')
+      .order('name'),
+
+    supabase
+      .from('fx_rates')
+      .select('rate')
+      .eq('pair', 'USD_ARS_MEP')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single(),
+
+    supabase
+      .from('fx_rates')
+      .select('rate')
+      .eq('pair', 'USD_ARS_CCL')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single(),
+  ])
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground tracking-tight">Transacciones</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Ingresos, egresos y transferencias personales</p>
-      </div>
-
-      <div className="rounded-lg bg-card border border-border flex flex-col items-center justify-center py-20 gap-4">
-        <ArrowLeftRight className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-base font-medium text-muted-foreground">Próximamente</p>
-        <p className="text-sm text-muted-foreground/60">Listado y carga de transacciones personales</p>
-      </div>
-    </div>
+    <TransaccionesDashboard
+      initialTransactions={transactions ?? []}
+      accounts={accounts ?? []}
+      categories={categories ?? []}
+      fx={{ mep: fxMep?.rate ?? null, ccl: fxCcl?.rate ?? null }}
+    />
   )
 }
