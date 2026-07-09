@@ -1,18 +1,50 @@
-import { RefreshCcw } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
+import SuscripcionesDashboard from '@/components/personal-finance/SuscripcionesDashboard'
 
-export default function SuscripcionesPage() {
+export default async function SuscripcionesPage() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = await createClient() as any
+
+  const [
+    { data: subs },
+    { data: cards },
+    { data: categories },
+    { data: fxMep },
+  ] = await Promise.all([
+    supabase
+      .from('personal_subscriptions')
+      .select('*, personal_cards(name), personal_categories(name, icon)')
+      .eq('is_active', true)
+      .order('next_due_date', { ascending: true, nullsLast: true }),
+
+    supabase
+      .from('personal_cards')
+      .select('id, name')
+      .eq('is_active', true)
+      .order('name'),
+
+    supabase
+      .from('personal_categories')
+      .select('id, name, icon')
+      .eq('type', 'EGRESO')
+      .eq('is_active', true)
+      .order('name'),
+
+    supabase
+      .from('fx_rates')
+      .select('rate')
+      .eq('pair', 'USD_ARS_MEP')
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .single(),
+  ])
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-foreground tracking-tight">Suscripciones</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Servicios recurrentes y vencimientos</p>
-      </div>
-
-      <div className="rounded-lg bg-card border border-border flex flex-col items-center justify-center py-20 gap-4">
-        <RefreshCcw className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-base font-medium text-muted-foreground">Próximamente</p>
-        <p className="text-sm text-muted-foreground/60">Netflix, Spotify, servicios y otros gastos recurrentes</p>
-      </div>
-    </div>
+    <SuscripcionesDashboard
+      initialSubs={subs       ?? []}
+      cards={      cards      ?? []}
+      categories={ categories ?? []}
+      fxMep={      fxMep?.rate ?? null}
+    />
   )
 }
