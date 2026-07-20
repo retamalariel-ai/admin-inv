@@ -35,6 +35,7 @@ export default async function PortfolioPage(props: PageProps<'/clientes/[id]/por
   const closedPositions = allPos.filter(
     p => Number(p.quantity_held) === 0 && Number(p.realized_gain_loss_ars ?? 0) !== 0,
   )
+  const totalAUM = rows.reduce((s, p) => s + Number(p.market_value_ars ?? 0), 0)
 
   return (
     <div className="space-y-8">
@@ -45,7 +46,7 @@ export default async function PortfolioPage(props: PageProps<'/clientes/[id]/por
         <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4">
           Posiciones ({rows.length})
         </h2>
-        <PositionsTable portfolioId={portfolioId} positions={rows} baseCurrency={portfolio.base_currency} />
+        <PositionsTable portfolioId={portfolioId} positions={rows} baseCurrency={portfolio.base_currency} totalAUM={totalAUM} />
       </div>
 
       <ClosedPositionsTable positions={closedPositions} />

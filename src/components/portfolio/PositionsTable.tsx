@@ -24,6 +24,7 @@ interface PositionsTableProps {
   portfolioId:   string
   positions:     Position[]
   baseCurrency?: string
+  totalAUM?:     number
 }
 
 const ASSET_LABELS: Record<AssetType, string> = {
@@ -204,7 +205,7 @@ const FILTER_GROUPS: { label: string; types: AssetType[] }[] = [
   },
 ]
 
-export default function PositionsTable({ portfolioId, positions, baseCurrency = 'ARS' }: PositionsTableProps) {
+export default function PositionsTable({ portfolioId, positions, baseCurrency = 'ARS', totalAUM }: PositionsTableProps) {
   const router = useRouter()
   const [activeGroup, setActiveGroup]         = useState<string | null>(null)
   const [txDialogOpen, setTxDialogOpen]       = useState(false)
@@ -234,8 +235,23 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
       : (b.market_value_ars ?? 0) - (a.market_value_ars ?? 0)
   })
 
-  const colSpan = pnlView === 'DETALLE' ? 12 : 11
+  const colSpan = pnlView === 'DETALLE' ? 13 : 12
 
+  const totalPortfolioAUM = totalAUM ?? positions.reduce((s, p) => s + (p.market_value_ars ?? 0), 0)
+  const maxPct = filtered.length > 0 && totalPortfolioAUM > 0
+    ? Math.max(...filtered.map(p => (p.market_value_ars ?? 0) / totalPortfolioAUM * 100))
+    : 1
+
+  const groups: { type: AssetType | null; label: string; positions: typeof filtered }[] = []
+  for (const pos of filtered) {
+    const t = pos.asset_type as AssetType | null
+    const last = groups[groups.length - 1]
+    if (!last || last.type !== t) {
+      groups.push({ type: t, label: t ? (ASSET_LABELS[t] ?? t) : '—', positions: [pos] })
+    } else {
+      last.positions.push(pos)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -305,6 +321,7 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'PPP USD' : 'PPP ARS'}</TableHead>
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Precio actual</TableHead>
               <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'Valor USD' : 'Valor ARS'}</TableHead>
+              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">% Cartera</TableHead>
 
               {pnlView === 'ARS' && (
                 <>
@@ -358,147 +375,180 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((pos, i) => {
-                const pnlARS    = new Decimal(pos.unrealized_pnl_ars ?? 0)
-                const pnlPct    = new Decimal(pos.unrealized_pnl_ars_pct ?? 0)
-                const pnlUSD    = new Decimal(pos.unrealized_pnl_usd ?? 0)
-                const costUSD   = new Decimal(pos.total_cost_basis_usd ?? 0)
-                const pnlUsdPct = costUSD.gt(0) ? pnlUSD.div(costUSD) : new Decimal(0)
-                const fxGain    = new Decimal(pos.fx_gain_loss_ars ?? 0)
-                const priceGain = new Decimal(pos.price_gain_loss_ars ?? 0)
-                const context   = pnlView === 'DETALLE' ? getPnLContext(pos) : null
+              groups.flatMap((group, gi) => {
+                const groupValueARS = group.positions.reduce((s, p) => s + (p.market_value_ars ?? 0), 0)
+                const groupPct      = totalPortfolioAUM > 0 ? groupValueARS / totalPortfolioAUM * 100 : 0
+                const rightSpan     = pnlView === 'DETALLE' ? 5 : 4
+                return [
+                  ...group.positions.map((pos, i) => {
+                    const pnlARS    = new Decimal(pos.unrealized_pnl_ars ?? 0)
+                    const pnlPct    = new Decimal(pos.unrealized_pnl_ars_pct ?? 0)
+                    const pnlUSD    = new Decimal(pos.unrealized_pnl_usd ?? 0)
+                    const costUSD   = new Decimal(pos.total_cost_basis_usd ?? 0)
+                    const pnlUsdPct = costUSD.gt(0) ? pnlUSD.div(costUSD) : new Decimal(0)
+                    const fxGain    = new Decimal(pos.fx_gain_loss_ars ?? 0)
+                    const priceGain = new Decimal(pos.price_gain_loss_ars ?? 0)
+                    const context   = pnlView === 'DETALLE' ? getPnLContext(pos) : null
 
-                const dailyPnl    = pos.daily_pnl_ars    != null ? new Decimal(pos.daily_pnl_ars)    : null
-                const dailyChgPct = pos.daily_change_pct != null ? new Decimal(pos.daily_change_pct) : null
+                    const dailyPnl    = pos.daily_pnl_ars    != null ? new Decimal(pos.daily_pnl_ars)    : null
+                    const dailyChgPct = pos.daily_change_pct != null ? new Decimal(pos.daily_change_pct) : null
 
-                const arsColor   = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const usdColor   = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const fxColor    = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
-                const priceColor = priceGain.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const hoyColor   = dailyPnl == null ? 'text-slate-500' : dailyPnl.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-700 text-slate-400'
-                const be         = formatBreakEven(pos)
+                    const arsColor   = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                    const usdColor   = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                    const fxColor    = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
+                    const priceColor = priceGain.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                    const hoyColor   = dailyPnl == null ? 'text-slate-500' : dailyPnl.gte(0) ? 'text-emerald-400' : 'text-red-400'
+                    const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-700 text-slate-400'
+                    const be         = formatBreakEven(pos)
+                    const pctCartera = totalPortfolioAUM > 0 ? (pos.market_value_ars ?? 0) / totalPortfolioAUM * 100 : 0
+                    const barCartera = maxPct > 0 ? pctCartera / maxPct * 100 : 0
 
-                return (
-                  <TableRow
-                    key={`${pos.asset_id}-${i}`}
-                    className="border-slate-700/50 hover:bg-slate-800/60"
-                  >
-                    <TableCell className="font-mono font-semibold text-white">
-                      {pos.ticker ?? '—'}
-                    </TableCell>
-                    <TableCell className="text-slate-300 max-w-[180px] truncate" title={pos.asset_name ?? undefined}>
-                      {pos.asset_name ?? '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`text-xs border-0 ${badgeClass}`}>
-                        {pos.asset_type ? ASSET_LABELS[pos.asset_type as AssetType] : '—'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-slate-200">
-                      {formatQty(pos)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-slate-400 text-sm">
-                      {isUsdBase
-                        ? (pos.ppp_usd != null ? formatUSD(new Decimal(pos.ppp_usd)) : '—')
-                        : formatPPP(pos)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-slate-200">
-                      {formatPrice(pos)}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-white">
-                      {isUsdBase
-                        ? (pos.market_value_usd != null ? formatUSD(new Decimal(pos.market_value_usd)) : '—')
-                        : (pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—')}
-                    </TableCell>
+                    return (
+                      <TableRow
+                        key={`${pos.asset_id}-${gi}-${i}`}
+                        className="border-slate-700/50 hover:bg-slate-800/60"
+                      >
+                        <TableCell className="font-mono font-semibold text-white">
+                          {pos.ticker ?? '—'}
+                        </TableCell>
+                        <TableCell className="text-slate-300 max-w-[180px] truncate" title={pos.asset_name ?? undefined}>
+                          {pos.asset_name ?? '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`text-xs border-0 ${badgeClass}`}>
+                            {pos.asset_type ? ASSET_LABELS[pos.asset_type as AssetType] : '—'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-slate-200">
+                          {formatQty(pos)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-slate-400 text-sm">
+                          {isUsdBase
+                            ? (pos.ppp_usd != null ? formatUSD(new Decimal(pos.ppp_usd)) : '—')
+                            : formatPPP(pos)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-slate-200">
+                          {formatPrice(pos)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-white">
+                          {isUsdBase
+                            ? (pos.market_value_usd != null ? formatUSD(new Decimal(pos.market_value_usd)) : '—')
+                            : (pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—')}
+                        </TableCell>
+                        <TableCell className="text-right min-w-[68px]">
+                          <div className="font-mono text-slate-200 text-xs tabular-nums">{pctCartera.toFixed(1)}%</div>
+                          <div className="mt-0.5 h-0.5 w-full rounded-full bg-slate-700/60 overflow-hidden">
+                            <div className="h-full rounded-full bg-emerald-400/60 transition-all" style={{ width: `${barCartera}%` }} />
+                          </div>
+                        </TableCell>
 
-                    {pnlView === 'ARS' && (
-                      <>
-                        <TableCell className={`text-right font-mono font-semibold ${arsColor}`}>
-                          {formatARS(pnlARS)}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono text-sm ${arsColor}`}>
-                          {formatPct(pnlPct)}
-                        </TableCell>
-                      </>
-                    )}
-                    {pnlView === 'HOY' && (
-                      <>
-                        <TableCell className={`text-right font-mono font-semibold ${hoyColor}`}>
-                          {dailyPnl != null ? formatARS(dailyPnl) : '—'}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono text-sm ${hoyColor}`}>
-                          {dailyChgPct != null ? formatPct(dailyChgPct) : '—'}
-                        </TableCell>
-                      </>
-                    )}
-                    {pnlView === 'USD' && (
-                      <>
-                        <TableCell className={`text-right font-mono font-semibold ${usdColor}`}>
-                          {formatUSD(pnlUSD)}
-                        </TableCell>
-                        <TableCell className={`text-right font-mono text-sm ${usdColor}`}>
-                          {formatPct(pnlUsdPct)}
-                        </TableCell>
-                      </>
-                    )}
-                    {pnlView === 'DETALLE' && (
-                      <>
-                        {/* P&L ARS total + contexto */}
+                        {pnlView === 'ARS' && (
+                          <>
+                            <TableCell className={`text-right font-mono font-semibold ${arsColor}`}>
+                              {formatARS(pnlARS)}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono text-sm ${arsColor}`}>
+                              {formatPct(pnlPct)}
+                            </TableCell>
+                          </>
+                        )}
+                        {pnlView === 'HOY' && (
+                          <>
+                            <TableCell className={`text-right font-mono font-semibold ${hoyColor}`}>
+                              {dailyPnl != null ? formatARS(dailyPnl) : '—'}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono text-sm ${hoyColor}`}>
+                              {dailyChgPct != null ? formatPct(dailyChgPct) : '—'}
+                            </TableCell>
+                          </>
+                        )}
+                        {pnlView === 'USD' && (
+                          <>
+                            <TableCell className={`text-right font-mono font-semibold ${usdColor}`}>
+                              {formatUSD(pnlUSD)}
+                            </TableCell>
+                            <TableCell className={`text-right font-mono text-sm ${usdColor}`}>
+                              {formatPct(pnlUsdPct)}
+                            </TableCell>
+                          </>
+                        )}
+                        {pnlView === 'DETALLE' && (
+                          <>
+                            {/* P&L ARS total + contexto */}
+                            <TableCell className="text-right">
+                              <div className={`font-mono font-semibold text-sm ${arsColor}`}>
+                                {formatARS(pnlARS)}
+                              </div>
+                              <div className={`font-mono text-xs ${arsColor}`}>
+                                {formatPct(pnlPct)}
+                              </div>
+                              {context && (
+                                <div className={`text-[10px] mt-0.5 leading-tight ${context.color}`}>
+                                  {context.msg}
+                                </div>
+                              )}
+                            </TableCell>
+                            {/* Ganancia cambiaria */}
+                            <TableCell className="text-right">
+                              <div className={`font-mono text-xs ${fxColor}`}>
+                                {formatARS(fxGain)}
+                              </div>
+                              <div className="text-[10px] text-slate-600">devaluación</div>
+                            </TableCell>
+                            {/* Ganancia de precio pura */}
+                            <TableCell className="text-right">
+                              <div className={`font-mono text-xs ${priceColor}`}>
+                                {formatARS(priceGain)}
+                              </div>
+                              <div className="text-[10px] text-slate-600">precio real</div>
+                            </TableCell>
+                          </>
+                        )}
+
                         <TableCell className="text-right">
-                          <div className={`font-mono font-semibold text-sm ${arsColor}`}>
-                            {formatARS(pnlARS)}
-                          </div>
-                          <div className={`font-mono text-xs ${arsColor}`}>
-                            {formatPct(pnlPct)}
-                          </div>
-                          {context && (
-                            <div className={`text-[10px] mt-0.5 leading-tight ${context.color}`}>
-                              {context.msg}
+                          {be ? (
+                            <div>
+                              <div className="font-mono text-slate-400 text-xs">{be.price}</div>
+                              <div className={`font-mono text-xs ${be.above ? 'text-emerald-400' : 'text-red-400'}`}>
+                                {be.above ? '▲ ' : '▼ '}{be.pct}
+                              </div>
                             </div>
+                          ) : (
+                            <span className="text-slate-600 text-xs">—</span>
                           )}
                         </TableCell>
-                        {/* Ganancia cambiaria */}
-                        <TableCell className="text-right">
-                          <div className={`font-mono text-xs ${fxColor}`}>
-                            {formatARS(fxGain)}
-                          </div>
-                          <div className="text-[10px] text-slate-600">devaluación</div>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openTxFor(pos)}
+                            className="text-xs border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                          >
+                            + Tx
+                          </Button>
                         </TableCell>
-                        {/* Ganancia de precio pura */}
-                        <TableCell className="text-right">
-                          <div className={`font-mono text-xs ${priceColor}`}>
-                            {formatARS(priceGain)}
-                          </div>
-                          <div className="text-[10px] text-slate-600">precio real</div>
-                        </TableCell>
-                      </>
-                    )}
-
-                    <TableCell className="text-right">
-                      {be ? (
-                        <div>
-                          <div className="font-mono text-slate-400 text-xs">{be.price}</div>
-                          <div className={`font-mono text-xs ${be.above ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {be.above ? '▲ ' : '▼ '}{be.pct}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-slate-600 text-xs">—</span>
-                      )}
+                      </TableRow>
+                    )
+                  }),
+                  <TableRow
+                    key={`sub-${group.type ?? gi}`}
+                    className="bg-slate-800/40 border-t border-slate-600/60"
+                  >
+                    <TableCell colSpan={6} className="text-slate-400 text-[11px] py-2 pl-4 font-semibold uppercase tracking-wider">
+                      Total {group.label} · {group.positions.length} posición{group.positions.length !== 1 ? 'es' : ''}
                     </TableCell>
-                    <TableCell>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openTxFor(pos)}
-                        className="text-xs border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
-                      >
-                        + Tx
-                      </Button>
+                    <TableCell className="text-right font-mono text-xs font-semibold text-slate-300 py-2">
+                      {formatARS(new Decimal(groupValueARS))}
                     </TableCell>
-                  </TableRow>
-                )
+                    <TableCell className="text-right py-2">
+                      <div className="font-mono text-xs text-slate-300 tabular-nums">{groupPct.toFixed(1)}%</div>
+                      <div className="mt-0.5 h-0.5 w-full rounded-full bg-slate-700/60 overflow-hidden">
+                        <div className="h-full rounded-full bg-emerald-400/40 transition-all" style={{ width: `${maxPct > 0 ? (groupPct / maxPct) * 100 : 0}%` }} />
+                      </div>
+                    </TableCell>
+                    <TableCell colSpan={rightSpan} />
+                  </TableRow>,
+                ]
               })
             )}
           </TableBody>
