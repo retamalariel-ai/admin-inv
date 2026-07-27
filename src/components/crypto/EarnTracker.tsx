@@ -254,7 +254,7 @@ export default function EarnTracker({ earnPositions }: Props) {
                   <div>
                     <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Capital</p>
                     <p className="text-sm font-semibold tabular-nums text-slate-200">
-                      {formatCrypto(new Decimal(pos.principal_amount))} {pos.currency}
+                      {formatCrypto(new Decimal(pos.principal_amount))} {pos.assets?.ticker ?? pos.currency}
                     </p>
                   </div>
                   <div>
@@ -268,7 +268,7 @@ export default function EarnTracker({ earnPositions }: Props) {
                       Diario proyectado
                     </p>
                     <p className="text-sm font-semibold tabular-nums text-emerald-300">
-                      {formatCrypto(daily)} {pos.currency}
+                      {formatCrypto(daily)} {pos.assets?.ticker ?? pos.currency}
                     </p>
                   </div>
                   <div>
