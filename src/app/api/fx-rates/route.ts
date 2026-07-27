@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
+export const dynamic   = 'force-dynamic'
 export const revalidate = 300 // 5 min cache
 
 export async function GET() {

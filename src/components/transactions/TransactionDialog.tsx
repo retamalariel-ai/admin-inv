@@ -83,6 +83,26 @@ const CURRENCIES: { value: Currency; label: string }[] = [
   { value: 'SOL',         label: 'SOL' },
 ]
 
+// ── Earn constants ─────────────────────────────────────────────────────────
+const EARN_PERIODS = ['DIARIO', 'SEMANAL', 'MENSUAL', 'ÚNICO'] as const
+type EarnPeriod = typeof EARN_PERIODS[number]
+
+const EARN_TIERS = [
+  { value: 'NEXO_GOLD',     label: 'Nexo Gold (6.5% USDT / 3% NEXO)' },
+  { value: 'NEXO_SILVER',   label: 'Nexo Silver (5% USDT / 2% NEXO)' },
+  { value: 'NEXO_PLATINUM', label: 'Nexo Platinum (8% USDT / 4% NEXO)' },
+  { value: 'BINANCE_EARN',  label: 'Binance Earn' },
+  { value: 'OTRA',          label: 'Otra' },
+]
+
+const STABLECOIN_TICKERS = new Set(['USDT', 'USDC', 'BUSD', 'DAI', 'PYUSD'])
+
+const TIER_APY: Record<string, { stable: number; nexo: number }> = {
+  NEXO_GOLD:     { stable: 6.5, nexo: 3.0 },
+  NEXO_SILVER:   { stable: 5.0, nexo: 2.0 },
+  NEXO_PLATINUM: { stable: 8.0, nexo: 4.0 },
+}
+
 // ── Net amount calculation ─────────────────────────────────────────────────
 function calcNet(
   txType: TxType, gross: Decimal,
@@ -175,6 +195,9 @@ export default function TransactionDialog({
   const [assetComboOpen, setAssetComboOpen] = useState(false)
   const [fxOpen, setFxOpen]           = useState(false)
   const [submitting, setSubmitting]   = useState(false)
+  const [earnPeriod, setEarnPeriod]   = useState<EarnPeriod>('DIARIO')
+  const [earnApy, setEarnApy]         = useState('')
+  const [earnTier, setEarnTier]       = useState('')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -205,6 +228,9 @@ export default function TransactionDialog({
     reset({ ...DEFAULT_VALUES, asset_id: defaultAssetId ?? '' })
     setTxType('COMPRA')
     setFxOpen(false)
+    setEarnPeriod('DIARIO')
+    setEarnApy('')
+    setEarnTier('')
   }, [open, defaultAssetId, reset])
 
   // Apply parsed PDF data to the form
@@ -237,6 +263,16 @@ export default function TransactionDialog({
     if (data.notes) noteParts.push(data.notes)
     if (noteParts.length) setValue('notes', noteParts.join(' | '))
   }, [assets, setValue]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pre-fill APY based on tier + asset ticker
+  function handleTierChange(tier: string) {
+    setEarnTier(tier)
+    const rates = TIER_APY[tier]
+    if (!rates || !selectedAsset) return
+    const tick = selectedAsset.ticker.toUpperCase()
+    if (tick === 'NEXO') setEarnApy(String(rates.nexo))
+    else if (STABLECOIN_TICKERS.has(tick)) setEarnApy(String(rates.stable))
+  }
 
   // Apply `prefill` prop once assets are available
   const prefillApplied = useRef(false)
@@ -344,7 +380,7 @@ export default function TransactionDialog({
       setFxOpen(true)
       return
     }
-    if (isCrypto && !data.crypto_price_usd) {
+    if (isCrypto && !isEarn && !data.crypto_price_usd) {
       setError('crypto_price_usd', { message: 'Precio USD requerido para activos crypto' })
       setFxOpen(true)
       return
@@ -366,12 +402,21 @@ export default function TransactionDialog({
     const toNum  = (v?: string): number | null => (v ? parseFloat(v) : null)
     const numDef = (v?: string, d = 0)          => parseFloat(v || String(d))
 
+    // Earn metadata → notes prefix
+    let notesWithEarn = data.notes || ''
+    if (isEarn) {
+      const earnParts: string[] = [`periodo:${earnPeriod}`]
+      if (earnApy)  earnParts.push(`apy:${parseFloat(earnApy || '0').toFixed(2)}`)
+      if (earnTier) earnParts.push(`tier:${earnTier}`)
+      notesWithEarn = earnParts.join('|') + '|' + (notesWithEarn ? notesWithEarn : '')
+    }
+
     const { error } = await supabase.from('transactions').insert({
       portfolio_id:             portfolioId,
       asset_id:                 data.asset_id,
       transaction_type:         txType,
       trade_date:               data.trade_date,
-      settlement_date:          data.settlement_date || null,
+      settlement_date:          isEarn ? null : (data.settlement_date || null),
       quantity:                 parseFloat(data.quantity),
       price_per_unit:           parseFloat(data.price_per_unit),
       gross_amount:             gross.toNumber(),
@@ -391,7 +436,7 @@ export default function TransactionDialog({
       tx_hash:                  data.tx_hash || null,
       protocol_name:            data.protocol_name || null,
       residual_factor_at_trade: selectedAsset?.current_residual_factor ?? 1,
-      notes:                    data.notes || null,
+      notes:                    notesWithEarn || null,
     })
 
     setSubmitting(false)
@@ -534,18 +579,22 @@ export default function TransactionDialog({
           </div>
 
           {/* Fechas */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn('grid gap-3', isEarn ? 'grid-cols-1 max-w-xs' : 'grid-cols-2')}>
             <div className="space-y-1">
-              <Label className="text-slate-300">Fecha de operación *</Label>
+              <Label className="text-slate-300">
+                {isEarn ? 'Fecha de acreditación *' : 'Fecha de operación *'}
+              </Label>
               <Input type="date" {...register('trade_date')}
                 className="bg-slate-800 border-slate-700 text-slate-100" />
               {errors.trade_date && <p className="text-xs text-red-400">{errors.trade_date.message}</p>}
             </div>
-            <div className="space-y-1">
-              <Label className="text-slate-300">Fecha de liquidación</Label>
-              <Input type="date" {...register('settlement_date')}
-                className="bg-slate-800 border-slate-700 text-slate-100" />
-            </div>
+            {!isEarn && (
+              <div className="space-y-1">
+                <Label className="text-slate-300">Fecha de liquidación</Label>
+                <Input type="date" {...register('settlement_date')}
+                  className="bg-slate-800 border-slate-700 text-slate-100" />
+              </div>
+            )}
           </div>
 
           {/* Cantidad · Precio · Moneda */}
@@ -672,7 +721,9 @@ export default function TransactionDialog({
               {isCrypto && (
                 <div className="space-y-1">
                   <Label className="text-slate-300">
-                    Precio USD del crypto<span className="text-red-400 ml-0.5">*</span>
+                    Precio USD del crypto
+                    {!isEarn && <span className="text-red-400 ml-0.5">*</span>}
+                    {isEarn && <span className="text-slate-500 ml-1 text-xs">(opcional — se toma del precio actual)</span>}
                   </Label>
                   <Input {...register('crypto_price_usd')} placeholder="ej: 65000.00"
                     className="bg-slate-800 border-slate-700 text-slate-100 max-w-[200px]" />
@@ -694,12 +745,59 @@ export default function TransactionDialog({
             </div>
           )}
           {isEarn && (
-            <div className="rounded-lg bg-blue-950/30 border border-blue-800/40 p-3">
-              <p className="text-xs text-blue-300">
-                <strong>{txType === 'INTERES_EARN' ? 'Interés Earn' : 'Reward DeFi'}:</strong>{' '}
-                el interés aumenta la cantidad con costo base = 0, lo que <strong>licúa el PPP</strong>.
-              </p>
-            </div>
+            <>
+              <div className="rounded-lg bg-blue-950/30 border border-blue-800/40 p-3">
+                <p className="text-xs text-blue-300">
+                  <strong>{txType === 'INTERES_EARN' ? 'Interés Earn' : 'Reward DeFi'}:</strong>{' '}
+                  el interés aumenta la cantidad con costo base = 0, lo que <strong>licúa el PPP</strong>.
+                </p>
+              </div>
+
+              {/* Earn metadata */}
+              <div className="rounded-lg bg-slate-800/50 border border-slate-700 p-4 space-y-3">
+                <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                  Configuración Earn
+                </p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-slate-300">Período</Label>
+                    <Select value={earnPeriod} onValueChange={v => setEarnPeriod(v as EarnPeriod)}>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                        {EARN_PERIODS.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-slate-300">APY %</Label>
+                    <Input
+                      type="number" step="0.01" min="0" max="100"
+                      value={earnApy}
+                      onChange={e => setEarnApy(e.target.value)}
+                      placeholder="ej: 6.50"
+                      className="bg-slate-800 border-slate-700 text-slate-100"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-slate-300">Plataforma / Tier</Label>
+                    <Select value={earnTier} onValueChange={handleTierChange}>
+                      <SelectTrigger className="bg-slate-800 border-slate-700 text-slate-100">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700 text-slate-100">
+                        {EARN_TIERS.map(t => (
+                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Campos SWAP */}

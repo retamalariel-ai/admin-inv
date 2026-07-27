@@ -3,6 +3,8 @@ import { calculateRatesFromIOL } from '@/lib/iol/client'
 import { calculateRatesFromPPI } from '@/lib/ppi/client'
 import type { Database } from '@/types/database.types'
 
+export const dynamic = 'force-dynamic'
+
 interface DolarApiEntry {
   casa:   string
   compra: number | null
