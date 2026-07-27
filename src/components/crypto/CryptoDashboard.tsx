@@ -1,49 +1,42 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import Decimal from 'decimal.js'
-import { Download, ArrowUpDown } from 'lucide-react'
-import { Button }   from '@/components/ui/button'
-import { Badge }    from '@/components/ui/badge'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge }  from '@/components/ui/badge'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
-import { formatUSD, formatARS, formatPct, formatCrypto } from '@/lib/utils/calculations'
+import { formatUSD, formatARS, formatCrypto } from '@/lib/utils/calculations'
 import { downloadCSV } from '@/lib/utils/csv'
-import { usePnLView } from '@/hooks/usePnLView'
 import EarnTracker, { type EarnPosition } from './EarnTracker'
 import type { Database } from '@/types/database.types'
 
 type Position  = Database['public']['Views']['portfolio_valuation_unified']['Row']
 type AssetType = Database['public']['Enums']['asset_type']
 
-const SPOT_TYPES: AssetType[]  = ['CRYPTO_SPOT', 'CRYPTO_STABLECOIN']
-const EARN_TYPES: AssetType[]  = ['CRYPTO_EARN']
-const DEFI_TYPES: AssetType[]  = ['CRYPTO_DEFI_LP', 'CRYPTO_DEFI_STAKE', 'CRYPTO_DEFI_LENDING']
-const CASH_TYPES: AssetType[]  = ['CASH_CRYPTO_STABLE', 'CASH_CRYPTO_NATIVE']
+// ── Public types ──────────────────────────────────────────────────────────────
+export interface PortfolioGroup {
+  portfolio: {
+    id:             string
+    name:           string
+    custodian_name: string | null
+    custodian_type: string
+    base_currency:  string
+  }
+  positions:     Position[]
+  earnPositions: EarnPosition[]
+}
 
-const ASSET_LABELS: Record<AssetType, string> = {
-  ACCION_LOCAL:        'Acción',
-  CEDEAR:              'CEDEAR',
-  BONO_SOBERANO:       'Bono Sob.',
-  BONO_SUBSOBERANO:    'Bono Sub.',
-  ON:                  'ON',
-  LETES:               'LETES',
-  LECAP:               'LECAP',
-  FCI_MONEY_MARKET:    'FCI MM',
-  FCI_RENTA_FIJA:      'FCI RF',
-  FCI_RENTA_VARIABLE:  'FCI RV',
-  FCI_RENTA_MIXTA:     'FCI Mix',
+// ── Constants ─────────────────────────────────────────────────────────────────
+const ASSET_LABELS: Partial<Record<AssetType, string>> = {
   CRYPTO_SPOT:         'Spot',
   CRYPTO_STABLECOIN:   'Stable',
   CRYPTO_EARN:         'Earn',
   CRYPTO_DEFI_LP:      'DeFi LP',
   CRYPTO_DEFI_STAKE:   'Stake',
   CRYPTO_DEFI_LENDING: 'Lending',
-  CASH_ARS:            'Cash ARS',
-  CASH_USD_MEP:        'Cash USD',
-  CASH_USD_CCL:        'Cash CCL',
   CASH_CRYPTO_STABLE:  'Cash Stbl',
   CASH_CRYPTO_NATIVE:  'Cash Nat.',
 }
@@ -59,337 +52,292 @@ const ASSET_COLOR: Partial<Record<AssetType, string>> = {
   CASH_CRYPTO_NATIVE:  'bg-slate-700/60 text-slate-300',
 }
 
-const NET_COLOR: Partial<Record<AssetType, string>> = {
-  CRYPTO_SPOT:         'bg-blue-900/40 text-blue-400',
-  CRYPTO_EARN:         'bg-emerald-900/40 text-emerald-400',
-  CRYPTO_DEFI_STAKE:   'bg-violet-900/40 text-violet-400',
-  CRYPTO_DEFI_LP:      'bg-purple-900/40 text-purple-400',
+const CUSTODIAN_BADGE: Record<string, { label: string; color: string }> = {
+  ALYCE:         { label: 'ALyC',   color: 'bg-blue-900/60 text-blue-300' },
+  EXCHANGE_CEX:  { label: 'CEX',    color: 'bg-orange-900/60 text-orange-300' },
+  EARN_PLATFORM: { label: 'CeFi',   color: 'bg-emerald-900/60 text-emerald-300' },
+  DEFI_PROTOCOL: { label: 'DeFi',   color: 'bg-purple-900/60 text-purple-300' },
+  WALLET_HW:     { label: 'HW',     color: 'bg-slate-700/60 text-slate-300' },
+  WALLET_SW:     { label: 'Wallet', color: 'bg-slate-700/60 text-slate-300' },
+  OTRO:          { label: 'Otro',   color: 'bg-slate-700/60 text-slate-300' },
 }
+
+// Stablecoin / cash types that might be idle (no earn, no yield)
+const IDLE_TYPES: AssetType[] = ['CRYPTO_STABLECOIN', 'CASH_CRYPTO_STABLE', 'CASH_CRYPTO_NATIVE']
 
 const D = (v: number | null) => new Decimal(v ?? 0)
 
-function daysHeld(firstPurchase: string | null, today: string): number {
-  if (!firstPurchase) return 0
-  return Math.max(1, Math.floor(
-    (new Date(today).getTime() - new Date(firstPurchase).getTime()) / 86_400_000,
-  ))
+function daysAccruedEarn(startDate: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000))
 }
 
-function calcAPY(position: Position, today: string): string {
-  const income = D(position.total_income_received_usd)
-  const cost   = D(position.total_cost_basis_usd)
-  const days   = daysHeld(position.first_purchase_date, today)
-  if (cost.isZero() || days === 0) return '—'
-  return `${income.div(cost).mul(new Decimal(365 / days)).mul(100).toFixed(2)}%`
-}
-
-function MetricCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+// ── Sub-components ────────────────────────────────────────────────────────────
+function MetricCard({ label, value, sub, positive }: {
+  label: string; value: string; sub?: string; positive?: boolean | null
+}) {
+  const valueColor = positive == null ? 'text-slate-100'
+    : positive ? 'text-emerald-400' : 'text-red-400'
   return (
     <div className="bg-slate-800 rounded-lg p-4 border border-slate-700">
       <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-xl font-semibold text-slate-100 tabular-nums">{value}</p>
+      <p className={`text-xl font-semibold tabular-nums ${valueColor}`}>{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-0.5">{sub}</p>}
     </div>
   )
 }
 
-type SortKey = 'client_name' | 'portfolio_name' | 'ticker' | 'asset_name' | 'asset_type'
-  | 'blockchain_network' | 'quantity_held' | 'ppp_usd' | 'current_price'
-  | 'market_value_usd' | 'market_value_ars' | 'unrealized_pnl_usd'
-  | 'total_income_received_usd'
-
-type TabValue = 'all' | 'spot' | 'earn' | 'defi' | 'cash'
-
-interface Props {
-  positions:     Position[]
-  earnPositions: EarnPosition[]
-  today:         string
-}
-
-const PNL_VIEWS = ['ARS', 'USD', 'DETALLE'] as const
-
-export default function CryptoDashboard({ positions, earnPositions, today }: Props) {
-  const [tab,     setTab]     = useState<TabValue>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('market_value_usd')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  const [pnlView, setPnlView] = usePnLView()
-
-  const filtered = useMemo(() => {
-    if (tab === 'spot') return positions.filter(p => SPOT_TYPES.includes(p.asset_type as AssetType))
-    if (tab === 'earn') return positions.filter(p => EARN_TYPES.includes(p.asset_type as AssetType))
-    if (tab === 'defi') return positions.filter(p => DEFI_TYPES.includes(p.asset_type as AssetType))
-    if (tab === 'cash') return positions.filter(p => CASH_TYPES.includes(p.asset_type as AssetType))
-    return positions
-  }, [positions, tab])
-
-  const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
-      const av = a[sortKey] ?? 0
-      const bv = b[sortKey] ?? 0
-      const cmp = typeof av === 'string'
-        ? (av as string).localeCompare(bv as string, 'es-AR')
-        : (av as number) - (bv as number)
-      return sortDir === 'asc' ? cmp : -cmp
-    })
-  }, [filtered, sortKey, sortDir])
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortKey(key); setSortDir('desc') }
-  }
-
-  function SortIcon({ k }: { k: SortKey }) {
-    if (sortKey !== k) return <ArrowUpDown className="h-3 w-3 text-slate-600 inline ml-1" />
-    return <span className="ml-1 text-emerald-400">{sortDir === 'asc' ? '↑' : '↓'}</span>
-  }
-
-  // Métricas sobre todas las posiciones
-  const aumUsd  = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
-  const aumArs  = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
-  const income  = positions.reduce((s, p) => s.plus(D(p.total_income_received_usd)), new Decimal(0))
-  const pnlUnr  = positions.reduce((s, p) => s.plus(D(p.unrealized_pnl_usd)), new Decimal(0))
-
-  function handleExport() {
-    const rows = sorted.map(p => ({
-      Cliente:     p.client_name ?? '',
-      Portfolio:   p.portfolio_name ?? '',
-      Token:       p.ticker ?? '',
-      Nombre:      p.asset_name ?? '',
-      Red:         p.blockchain_network ?? '',
-      Tipo:        p.asset_type ? ASSET_LABELS[p.asset_type as AssetType] : '',
-      Cantidad:    p.quantity_held ?? '',
-      PPP_USD:     p.ppp_usd ?? '',
-      Precio_USD:  p.current_price ?? '',
-      Mkt_Val_USD: p.market_value_usd ?? '',
-      Mkt_Val_ARS: p.market_value_ars ?? '',
-      PnL_USD:     p.unrealized_pnl_usd ?? '',
-      Income_USD:  p.total_income_received_usd ?? '',
-      APY:         calcAPY(p, today),
-    }))
-    downloadCSV(`crypto-${new Date().toISOString().slice(0, 10)}.csv`, rows)
-  }
-
-  const isCrypto = (p: Position) => D(p.quantity_held).gt(0)
-  const pnlClass = (v: number | null) =>
-    (v ?? 0) >= 0 ? 'text-emerald-400 tabular-nums' : 'text-red-400 tabular-nums'
-
-  const Th = ({ k, children, className = '' }: { k: SortKey; children: React.ReactNode; className?: string }) => (
-    <TableHead
-      className={`cursor-pointer select-none whitespace-nowrap ${className}`}
-      onClick={() => handleSort(k)}
-    >
-      {children}<SortIcon k={k} />
-    </TableHead>
-  )
+function PositionMiniTable({ positions }: { positions: Position[] }) {
+  const hasIncome = positions.some(p => (p.total_income_received_usd ?? 0) > 0)
 
   return (
-    <div className="space-y-4">
-      {/* Métricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="AUM Crypto USD" value={formatUSD(aumUsd)} />
-        <MetricCard label="AUM Crypto ARS" value={formatARS(aumArs)} />
-        <MetricCard label="Yield/Income USD" value={formatUSD(income)} sub="acumulado" />
-        <MetricCard
-          label="P&L No Realizado USD"
-          value={formatUSD(pnlUnr)}
-          sub={pnlUnr.gte(0) ? '▲ positivo' : '▼ negativo'}
-        />
-      </div>
-
-      {/* Tabs + Toggle P&L + botones */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <Tabs value={tab} onValueChange={v => setTab(v as TabValue)}>
-          <TabsList className="bg-slate-800">
-            <TabsTrigger value="all">Todos ({positions.length})</TabsTrigger>
-            <TabsTrigger value="spot">Spot ({positions.filter(p => SPOT_TYPES.includes(p.asset_type as AssetType)).length})</TabsTrigger>
-            <TabsTrigger value="earn">Earn ({positions.filter(p => EARN_TYPES.includes(p.asset_type as AssetType)).length})</TabsTrigger>
-            <TabsTrigger value="defi">DeFi ({positions.filter(p => DEFI_TYPES.includes(p.asset_type as AssetType)).length})</TabsTrigger>
-            <TabsTrigger value="cash">Cash ({positions.filter(p => CASH_TYPES.includes(p.asset_type as AssetType)).length})</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">P&L:</span>
-          {PNL_VIEWS.map(v => (
-            <Button key={v} size="sm"
-              onClick={() => setPnlView(v)}
-              className={pnlView === v
-                ? 'h-7 text-xs px-2.5 bg-emerald-700 hover:bg-emerald-600 text-white'
-                : 'h-7 text-xs px-2.5 border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700 bg-transparent'
-              }
-            >
-              {v === 'DETALLE' ? 'Detalle' : v}
-            </Button>
-          ))}
-          <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
-            <Download className="h-4 w-4" /> CSV
-          </Button>
-        </div>
-      </div>
-
-      {/* Earn Widget — siempre visible si hay posiciones configuradas */}
-      {earnPositions.length > 0 && (
-        <div>
-          <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
-            Earn Acumulado
-          </h3>
-          <EarnTracker earnPositions={earnPositions} />
-        </div>
-      )}
-
-      {/* Tabla principal */}
-      <div className="rounded-lg border border-slate-700 overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-slate-700 hover:bg-transparent">
-              <Th k="client_name">Cliente</Th>
-              <Th k="portfolio_name">Portfolio</Th>
-              <Th k="ticker">Token</Th>
-              <Th k="asset_name">Nombre</Th>
-              <Th k="blockchain_network">Red</Th>
-              <Th k="asset_type">Tipo</Th>
-              <Th k="quantity_held" className="text-right">Cantidad</Th>
-              <Th k="ppp_usd" className="text-right">PPP USD</Th>
-              <Th k="current_price" className="text-right">Precio USD</Th>
-              <Th k="market_value_usd" className="text-right">Mkt Val USD</Th>
-              <Th k="market_value_ars" className="text-right">Mkt Val ARS</Th>
-              {pnlView === 'ARS' && (
-                <>
-                  <TableHead className="text-right whitespace-nowrap cursor-default">P&L ARS</TableHead>
-                  <TableHead className="text-right cursor-default">%</TableHead>
-                </>
-              )}
-              {pnlView === 'USD' && (
-                <>
-                  <Th k="unrealized_pnl_usd" className="text-right">P&L USD</Th>
-                  <TableHead className="text-right cursor-default">%</TableHead>
-                </>
-              )}
-              {pnlView === 'DETALLE' && (
-                <>
-                  <TableHead className="text-right whitespace-nowrap cursor-default">P&L ARS</TableHead>
-                  <TableHead className="text-right whitespace-nowrap cursor-default">Del cual: FX</TableHead>
-                  <TableHead className="text-right whitespace-nowrap cursor-default">Del cual: Precio</TableHead>
-                </>
-              )}
-              <Th k="total_income_received_usd" className="text-right">Income USD</Th>
-              <TableHead className="text-right whitespace-nowrap">APY est.</TableHead>
+    <div className="rounded-lg border border-slate-700/60 overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-slate-700 hover:bg-transparent">
+            <TableHead className="text-xs">Token</TableHead>
+            <TableHead className="text-xs">Tipo</TableHead>
+            <TableHead className="text-right text-xs">Cantidad</TableHead>
+            <TableHead className="text-right text-xs">Precio USD</TableHead>
+            <TableHead className="text-right text-xs">Valor USD</TableHead>
+            <TableHead className="text-right text-xs">P&L USD</TableHead>
+            {hasIncome && <TableHead className="text-right text-xs">Income</TableHead>}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {positions.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={hasIncome ? 7 : 6} className="text-center text-slate-500 py-6 text-sm">
+                Sin posiciones
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={pnlView === 'DETALLE' ? 16 : 15} className="text-center text-slate-500 py-12">
-                  Sin posiciones
-                </TableCell>
-              </TableRow>
-            )}
-            {sorted.map((p, i) => {
-              const netColor = NET_COLOR[p.asset_type as AssetType]
-              const hasIncome = (p.total_income_received_usd ?? 0) > 0
-              const apy       = hasIncome ? calcAPY(p, today) : '—'
+          )}
+          {positions.map((p, i) => {
+            const pnl        = p.unrealized_pnl_usd ?? 0
+            const pnlClass   = pnl >= 0 ? 'text-emerald-400' : 'text-red-400'
+            const cost       = D(p.total_cost_basis_usd)
+            const pnlPct     = !cost.isZero()
+              ? D(pnl).div(cost).mul(100).toFixed(1) + '%'
+              : null
 
-              return (
-                <TableRow key={`${p.portfolio_id}-${p.asset_id}-${i}`}
-                  className="border-slate-700 hover:bg-slate-800/50">
-                  <TableCell className="text-slate-300 whitespace-nowrap text-sm">
-                    {p.client_name ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-slate-400 text-xs whitespace-nowrap">
-                    {p.portfolio_name ?? '—'}
-                    {p.custodian_name && (
-                      <span className="block text-slate-600">{p.custodian_name}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className={`font-mono font-semibold px-1.5 py-0.5 rounded text-sm ${netColor ?? 'text-slate-100'}`}>
-                      {p.ticker ?? '—'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-slate-300 text-xs max-w-[140px] truncate">
-                    {p.asset_name ?? '—'}
-                  </TableCell>
-                  <TableCell>
-                    {p.blockchain_network && (
-                      <Badge className="text-xs bg-slate-700/60 text-slate-300 capitalize">
-                        {p.blockchain_network}
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={`text-xs ${ASSET_COLOR[p.asset_type as AssetType] ?? 'bg-slate-700 text-slate-300'}`}>
-                      {p.asset_type ? ASSET_LABELS[p.asset_type as AssetType] : '—'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-300 text-xs">
-                    {p.quantity_held != null ? formatCrypto(D(p.quantity_held)) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-400 text-xs">
-                    {p.ppp_usd != null ? formatUSD(D(p.ppp_usd)) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-300">
-                    {p.current_price != null ? formatUSD(D(p.current_price)) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-100 font-medium">
-                    {p.market_value_usd != null ? formatUSD(D(p.market_value_usd)) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-400 text-xs">
-                    {p.market_value_ars != null ? formatARS(D(p.market_value_ars)) : '—'}
-                  </TableCell>
-                  {pnlView === 'ARS' && (
+            return (
+              <TableRow key={`${p.portfolio_id}-${p.asset_id}-${i}`}
+                className="border-slate-700/60 hover:bg-slate-800/40">
+                <TableCell>
+                  <span className={`font-mono font-semibold text-sm px-1.5 py-0.5 rounded
+                    ${ASSET_COLOR[p.asset_type as AssetType] ?? 'text-slate-100'}`}>
+                    {p.ticker ?? '—'}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  <Badge className={`text-xs ${ASSET_COLOR[p.asset_type as AssetType] ?? 'bg-slate-700 text-slate-300'}`}>
+                    {ASSET_LABELS[p.asset_type as AssetType] ?? p.asset_type}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-slate-300 text-xs">
+                  {p.quantity_held != null ? formatCrypto(D(p.quantity_held)) : '—'}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-slate-400 text-xs">
+                  {p.current_price != null ? formatUSD(D(p.current_price)) : '—'}
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-slate-100 text-sm font-medium">
+                  {p.market_value_usd != null ? formatUSD(D(p.market_value_usd)) : '—'}
+                </TableCell>
+                <TableCell className={`text-right tabular-nums text-xs ${pnlClass}`}>
+                  {pnl !== 0 ? (
                     <>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.unrealized_pnl_ars)}`}>
-                        {p.unrealized_pnl_ars != null ? formatARS(D(p.unrealized_pnl_ars)) : '—'}
-                      </TableCell>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.unrealized_pnl_ars_pct)}`}>
-                        {p.unrealized_pnl_ars_pct != null ? formatPct(D(p.unrealized_pnl_ars_pct)) : '—'}
-                      </TableCell>
+                      <div>{formatUSD(D(pnl))}</div>
+                      {pnlPct && <div className="text-[10px] opacity-70">{pnlPct}</div>}
                     </>
-                  )}
-                  {pnlView === 'USD' && (
-                    <>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.unrealized_pnl_usd)}`}>
-                        {p.unrealized_pnl_usd != null ? formatUSD(D(p.unrealized_pnl_usd)) : '—'}
-                      </TableCell>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.unrealized_pnl_usd)}`}>
-                        {p.total_cost_basis_usd && p.unrealized_pnl_usd != null
-                          ? formatPct(D(p.unrealized_pnl_usd).div(D(p.total_cost_basis_usd)))
-                          : '—'}
-                      </TableCell>
-                    </>
-                  )}
-                  {pnlView === 'DETALLE' && (
-                    <>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.unrealized_pnl_ars)}`}>
-                        <div>{p.unrealized_pnl_ars != null ? formatARS(D(p.unrealized_pnl_ars)) : '—'}</div>
-                        <div>{p.unrealized_pnl_ars_pct != null ? formatPct(D(p.unrealized_pnl_ars_pct)) : ''}</div>
-                      </TableCell>
-                      <TableCell className={`text-right text-xs ${(p.fx_gain_loss_ars ?? 0) >= 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                        {p.fx_gain_loss_ars != null ? formatARS(D(p.fx_gain_loss_ars)) : '—'}
-                        <div className="text-[10px] text-slate-600">devaluación</div>
-                      </TableCell>
-                      <TableCell className={`text-right text-xs ${pnlClass(p.price_gain_loss_ars)}`}>
-                        {p.price_gain_loss_ars != null ? formatARS(D(p.price_gain_loss_ars)) : '—'}
-                        <div className="text-[10px] text-slate-600">precio real</div>
-                      </TableCell>
-                    </>
-                  )}
+                  ) : '—'}
+                </TableCell>
+                {hasIncome && (
                   <TableCell className="text-right tabular-nums text-emerald-400 text-xs">
                     {(p.total_income_received_usd ?? 0) > 0
                       ? formatUSD(D(p.total_income_received_usd))
                       : '—'}
                   </TableCell>
-                  <TableCell className="text-right tabular-nums text-emerald-400 text-xs font-medium">
-                    {apy}
-                  </TableCell>
-                </TableRow>
-              )
-            })}
-          </TableBody>
-        </Table>
+                )}
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
+function PortfolioSection({ group }: { group: PortfolioGroup }) {
+  const { portfolio, positions, earnPositions } = group
+  const badge    = CUSTODIAN_BADGE[portfolio.custodian_type] ?? { label: portfolio.custodian_type, color: 'bg-slate-700 text-slate-300' }
+  const aumUSD   = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
+  const aumARS   = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
+
+  // Positions sitting idle (stablecoins with no earn income)
+  const idlePositions = positions.filter(p =>
+    IDLE_TYPES.includes(p.asset_type as AssetType) &&
+    D(p.quantity_held).gt(0) &&
+    (p.total_income_received_usd ?? 0) === 0,
+  )
+
+  // Sort: by market_value_usd desc
+  const sorted = [...positions].sort((a, b) => D(b.market_value_usd).minus(D(a.market_value_usd)).toNumber())
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-900/60 overflow-hidden">
+      {/* Portfolio header */}
+      <div className="flex items-center justify-between px-5 py-4 bg-slate-800/60 border-b border-slate-700">
+        <div className="flex items-center gap-3">
+          <Badge className={`text-xs font-medium ${badge.color}`}>{badge.label}</Badge>
+          <div>
+            <p className="text-slate-100 font-semibold">{portfolio.name}</p>
+            {portfolio.custodian_name && (
+              <p className="text-xs text-slate-500">{portfolio.custodian_name}</p>
+            )}
+          </div>
+          {idlePositions.length > 0 && (
+            <Badge className="bg-amber-900/50 text-amber-300 text-xs ml-2">
+              {idlePositions.length} fondo{idlePositions.length > 1 ? 's' : ''} en espera
+            </Badge>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-slate-100 font-semibold tabular-nums">{formatUSD(aumUSD)}</p>
+          <p className="text-xs text-slate-500 tabular-nums">{formatARS(aumARS)}</p>
+        </div>
       </div>
 
+      {/* Positions table */}
+      <div className="p-4 space-y-4">
+        <PositionMiniTable positions={sorted} />
+
+        {/* Earn tracker for this portfolio */}
+        {earnPositions.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+              Earn acumulado
+            </p>
+            <EarnTracker earnPositions={earnPositions} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+interface Props {
+  portfolioGroups: PortfolioGroup[]
+  today:           string
+}
+
+export default function CryptoDashboard({ portfolioGroups, today }: Props) {
+  const allPositions     = useMemo(() => portfolioGroups.flatMap(g => g.positions),     [portfolioGroups])
+  const allEarnPositions = useMemo(() => portfolioGroups.flatMap(g => g.earnPositions), [portfolioGroups])
+
+  // Global metrics
+  const aumUsd  = allPositions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
+  const aumArs  = allPositions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
+  const income  = allPositions.reduce((s, p) => s.plus(D(p.total_income_received_usd)), new Decimal(0))
+  const pnlUnr  = allPositions.reduce((s, p) => s.plus(D(p.unrealized_pnl_usd)), new Decimal(0))
+
+  // Global earn totals
+  const { totalDailyUSD, totalAccruedUSD } = useMemo(() => {
+    return allEarnPositions.reduce(
+      (acc, ep) => {
+        const daily   = new Decimal(ep.principal_amount).mul(ep.apy_pct).div(100).div(365)
+        const accrued = daily.mul(daysAccruedEarn(ep.start_date))
+        return {
+          totalDailyUSD:   acc.totalDailyUSD.plus(daily),
+          totalAccruedUSD: acc.totalAccruedUSD.plus(accrued),
+        }
+      },
+      { totalDailyUSD: new Decimal(0), totalAccruedUSD: new Decimal(0) },
+    )
+  }, [allEarnPositions])
+
+  function handleExport() {
+    const rows = allPositions.map(p => ({
+      Portfolio:   p.portfolio_name ?? '',
+      Token:       p.ticker ?? '',
+      Tipo:        p.asset_type ?? '',
+      Red:         p.blockchain_network ?? '',
+      Cantidad:    p.quantity_held ?? '',
+      Precio_USD:  p.current_price ?? '',
+      Mkt_Val_USD: p.market_value_usd ?? '',
+      Mkt_Val_ARS: p.market_value_ars ?? '',
+      PnL_USD:     p.unrealized_pnl_usd ?? '',
+      Income_USD:  p.total_income_received_usd ?? '',
+    }))
+    downloadCSV(`crypto-${today}.csv`, rows)
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Global metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard label="AUM Crypto USD"      value={formatUSD(aumUsd)} sub={formatARS(aumArs)} />
+        <MetricCard label="Yield / Income USD"  value={formatUSD(income)} sub="acumulado registrado" />
+        <MetricCard
+          label="P&L No Realizado USD"
+          value={formatUSD(pnlUnr)}
+          positive={pnlUnr.gte(0) ? true : false}
+          sub={pnlUnr.gte(0) ? '▲ positivo' : '▼ negativo'}
+        />
+        {allEarnPositions.length > 0 && (
+          <MetricCard
+            label="Earn diario proyectado"
+            value={`${formatUSD(totalDailyUSD)} / día`}
+            sub={`${formatUSD(totalAccruedUSD)} acumulado`}
+            positive={null}
+          />
+        )}
+      </div>
+
+      {/* CSV export */}
+      <div className="flex justify-end">
+        <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 text-slate-400">
+          <Download className="h-4 w-4" /> Exportar CSV
+        </Button>
+      </div>
+
+      {/* Per-portfolio sections */}
+      {portfolioGroups.map(group => (
+        <PortfolioSection key={group.portfolio.id} group={group} />
+      ))}
+
+      {/* Global earn totals footer */}
+      {allEarnPositions.length > 0 && (
+        <div className="rounded-xl border border-emerald-800/40 bg-emerald-950/20 px-5 py-4">
+          <p className="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider mb-3">
+            Total Earn — todos los portfolios
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Capital total</p>
+              <p className="text-base font-semibold tabular-nums text-slate-200">
+                {formatUSD(new Decimal(
+                  allEarnPositions.reduce((s, ep) => s + ep.principal_amount, 0),
+                ))}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Diario proyectado</p>
+              <p className="text-base font-semibold tabular-nums text-emerald-300">
+                {formatUSD(totalDailyUSD)} / día
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Acumulado proyectado</p>
+              <p className="text-base font-semibold tabular-nums text-slate-100">
+                {formatUSD(totalAccruedUSD)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <p className="text-xs text-slate-600 text-right">
-        {sorted.length} posiciones · ordenado por {sortKey} {sortDir}
+        {allPositions.length} posiciones · {portfolioGroups.length} plataformas · {today}
       </p>
     </div>
   )

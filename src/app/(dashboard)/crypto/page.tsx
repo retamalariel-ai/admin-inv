@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createServiceClient } from '@supabase/supabase-js'
-import CryptoDashboard from '@/components/crypto/CryptoDashboard'
+import CryptoDashboard, { type PortfolioGroup } from '@/components/crypto/CryptoDashboard'
 import type { Database } from '@/types/database.types'
 import type { EarnPosition } from '@/components/crypto/EarnTracker'
 
@@ -11,6 +11,16 @@ const CRYPTO_TYPES: AssetType[] = [
   'CRYPTO_DEFI_LP', 'CRYPTO_DEFI_STAKE', 'CRYPTO_DEFI_LENDING',
   'CASH_CRYPTO_STABLE', 'CASH_CRYPTO_NATIVE',
 ]
+
+const CUSTODIAN_ORDER: Record<string, number> = {
+  EXCHANGE_CEX:  0,
+  EARN_PLATFORM: 1,
+  WALLET_HW:     2,
+  WALLET_SW:     3,
+  DEFI_PROTOCOL: 4,
+  ALYCE:         5,
+  OTRO:          6,
+}
 
 export default async function CryptoPage() {
   const supabase = await createClient()
@@ -39,19 +49,47 @@ export default async function CryptoPage() {
       .order('created_at', { ascending: false }),
   ])
 
+  const allPositions = positions ?? []
   const earnPositions: EarnPosition[] = rawEarnPositions ?? []
+
+  // Distinct portfolio IDs present in crypto positions
+  const portfolioIds = [...new Set(allPositions.map(p => p.portfolio_id).filter(Boolean))] as string[]
+
+  // Fetch portfolio metadata (custodian_type not in the view)
+  const { data: portfolios } = portfolioIds.length > 0
+    ? await supabase
+        .from('portfolios')
+        .select('id, name, custodian_name, custodian_type, base_currency')
+        .in('id', portfolioIds)
+    : { data: [] }
+
+  // Build and sort groups
+  const portfolioGroups: PortfolioGroup[] = (portfolios ?? [])
+    .map(portfolio => ({
+      portfolio,
+      positions:     allPositions.filter(p => p.portfolio_id === portfolio.id),
+      earnPositions: earnPositions.filter(ep => ep.portfolio_id === portfolio.id),
+    }))
+    .sort((a, b) => {
+      const ao = CUSTODIAN_ORDER[a.portfolio.custodian_type ?? ''] ?? 99
+      const bo = CUSTODIAN_ORDER[b.portfolio.custodian_type ?? ''] ?? 99
+      if (ao !== bo) return ao - bo
+      // secondary: AUM descending
+      const aAum = a.positions.reduce((s, p) => s + (p.market_value_usd ?? 0), 0)
+      const bAum = b.positions.reduce((s, p) => s + (p.market_value_usd ?? 0), 0)
+      return bAum - aAum
+    })
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-100">Crypto</h1>
         <p className="text-sm text-slate-400 mt-1">
-          Spot, Earn y DeFi — {(positions ?? []).length} posiciones
+          {portfolioGroups.length} plataformas · {allPositions.length} posiciones
         </p>
       </div>
       <CryptoDashboard
-        positions={positions ?? []}
-        earnPositions={earnPositions ?? []}
+        portfolioGroups={portfolioGroups}
         today={new Date().toISOString().slice(0, 10)}
       />
     </div>
