@@ -276,7 +276,7 @@ export default function EarnTracker({ earnPositions }: Props) {
                       Acumulado ({days}d)
                     </p>
                     <p className="text-sm font-semibold tabular-nums text-slate-100">
-                      {formatCrypto(accrued)} {pos.currency}
+                      {formatCrypto(accrued)} {pos.assets?.ticker ?? pos.currency}
                     </p>
                   </div>
                 </div>
