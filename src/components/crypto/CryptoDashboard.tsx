@@ -12,7 +12,7 @@ import {
 import { formatUSD, formatARS, formatPct, formatCrypto } from '@/lib/utils/calculations'
 import { downloadCSV } from '@/lib/utils/csv'
 import { usePnLView } from '@/hooks/usePnLView'
-import EarnTracker from './EarnTracker'
+import EarnTracker, { type EarnPosition } from './EarnTracker'
 import type { Database } from '@/types/database.types'
 
 type Position  = Database['public']['Views']['portfolio_valuation_unified']['Row']
@@ -101,17 +101,17 @@ type SortKey = 'client_name' | 'portfolio_name' | 'ticker' | 'asset_name' | 'ass
 type TabValue = 'all' | 'spot' | 'earn' | 'defi' | 'cash'
 
 interface Props {
-  positions: Position[]
-  today:     string
+  positions:     Position[]
+  earnPositions: EarnPosition[]
+  today:         string
 }
 
 const PNL_VIEWS = ['ARS', 'USD', 'DETALLE'] as const
 
-export default function CryptoDashboard({ positions, today }: Props) {
+export default function CryptoDashboard({ positions, earnPositions, today }: Props) {
   const [tab,     setTab]     = useState<TabValue>('all')
   const [sortKey, setSortKey] = useState<SortKey>('market_value_usd')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
-  const [showEarn, setShowEarn] = useState(false)
   const [pnlView, setPnlView] = usePnLView()
 
   const filtered = useMemo(() => {
@@ -173,10 +173,6 @@ export default function CryptoDashboard({ positions, today }: Props) {
   const pnlClass = (v: number | null) =>
     (v ?? 0) >= 0 ? 'text-emerald-400 tabular-nums' : 'text-red-400 tabular-nums'
 
-  const earnCount = positions.filter(p =>
-    [...EARN_TYPES, ...DEFI_TYPES].includes(p.asset_type as AssetType)
-  ).length
-
   const Th = ({ k, children, className = '' }: { k: SortKey; children: React.ReactNode; className?: string }) => (
     <TableHead
       className={`cursor-pointer select-none whitespace-nowrap ${className}`}
@@ -224,24 +220,19 @@ export default function CryptoDashboard({ positions, today }: Props) {
               {v === 'DETALLE' ? 'Detalle' : v}
             </Button>
           ))}
-          {earnCount > 0 && (
-            <Button variant="outline" size="sm" onClick={() => setShowEarn(v => !v)} className="ml-2">
-              {showEarn ? 'Ocultar' : 'Ver'} Earn
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5">
             <Download className="h-4 w-4" /> CSV
           </Button>
         </div>
       </div>
 
-      {/* Earn Tracker */}
-      {showEarn && earnCount > 0 && (
+      {/* Earn Widget — siempre visible si hay posiciones configuradas */}
+      {earnPositions.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-3">
-            Earn / DeFi Tracker
+            Earn Acumulado
           </h3>
-          <EarnTracker positions={positions} today={today} />
+          <EarnTracker earnPositions={earnPositions} />
         </div>
       )}
 

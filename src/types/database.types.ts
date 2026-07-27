@@ -394,6 +394,80 @@ export type Database = {
           },
         ]
       }
+      earn_positions: {
+        Row: {
+          apy_pct: number
+          asset_id: string
+          created_at: string
+          currency: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          platform: string | null
+          portfolio_id: string
+          principal_amount: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          apy_pct: number
+          asset_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          platform?: string | null
+          portfolio_id: string
+          principal_amount: number
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          apy_pct?: number
+          asset_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          platform?: string | null
+          portfolio_id?: string
+          principal_amount?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "earn_positions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "earn_positions_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_valuation_unified"
+            referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "earn_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_valuation_unified"
+            referencedColumns: ["portfolio_id"]
+          },
+          {
+            foreignKeyName: "earn_positions_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fx_rates: {
         Row: {
           ccl_ticker_ars: string
@@ -441,6 +515,352 @@ export type Database = {
           source?: string
         }
         Relationships: []
+      }
+      personal_accounts: {
+        Row: {
+          created_at: string | null
+          currency: string
+          current_balance: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          owner: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string
+          current_balance?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          owner?: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string
+          current_balance?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          owner?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      personal_cards: {
+        Row: {
+          bank: string | null
+          card_type: string | null
+          closing_day: number | null
+          created_at: string | null
+          credit_limit: number | null
+          currency: string
+          due_day: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          bank?: string | null
+          card_type?: string | null
+          closing_day?: number | null
+          created_at?: string | null
+          credit_limit?: number | null
+          currency?: string
+          due_day?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          bank?: string | null
+          card_type?: string | null
+          closing_day?: number | null
+          created_at?: string | null
+          credit_limit?: number | null
+          currency?: string
+          due_day?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
+      }
+      personal_categories: {
+        Row: {
+          budget_amount: number | null
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          budget_amount?: number | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: string
+        }
+        Update: {
+          budget_amount?: number | null
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      personal_installments: {
+        Row: {
+          card_id: string | null
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          description: string
+          id: string
+          installment_amount: number
+          is_active: boolean | null
+          paid_installments: number | null
+          start_date: string
+          total_amount: number
+          total_installments: number
+        }
+        Insert: {
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          description: string
+          id?: string
+          installment_amount: number
+          is_active?: boolean | null
+          paid_installments?: number | null
+          start_date: string
+          total_amount: number
+          total_installments: number
+        }
+        Update: {
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          description?: string
+          id?: string
+          installment_amount?: number
+          is_active?: boolean | null
+          paid_installments?: number | null
+          start_date?: string
+          total_amount?: number
+          total_installments?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_installments_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "personal_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_installments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "personal_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_portfolio_ownership: {
+        Row: {
+          created_at: string | null
+          id: string
+          include_in_patrimony: boolean | null
+          notes: string | null
+          ownership_pct: number
+          portfolio_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          include_in_patrimony?: boolean | null
+          notes?: string | null
+          ownership_pct?: number
+          portfolio_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          include_in_patrimony?: boolean | null
+          notes?: string | null
+          ownership_pct?: number
+          portfolio_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_portfolio_ownership_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: true
+            referencedRelation: "portfolio_valuation_unified"
+            referencedColumns: ["portfolio_id"]
+          },
+          {
+            foreignKeyName: "personal_portfolio_ownership_portfolio_id_fkey"
+            columns: ["portfolio_id"]
+            isOneToOne: true
+            referencedRelation: "portfolios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_subscriptions: {
+        Row: {
+          amount: number
+          card_id: string | null
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          frequency: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          next_due_date: string | null
+          notes: string | null
+        }
+        Insert: {
+          amount: number
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          next_due_date?: string | null
+          notes?: string | null
+        }
+        Update: {
+          amount?: number
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          next_due_date?: string | null
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_subscriptions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "personal_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_subscriptions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "personal_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      personal_transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          amount_ars: number | null
+          card_id: string | null
+          category_id: string | null
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          date: string
+          description: string | null
+          fx_rate: number | null
+          id: string
+          installment_number: number | null
+          notes: string | null
+          total_installments: number | null
+          type: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          amount_ars?: number | null
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          date?: string
+          description?: string | null
+          fx_rate?: number | null
+          id?: string
+          installment_number?: number | null
+          notes?: string | null
+          total_installments?: number | null
+          type: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          amount_ars?: number | null
+          card_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          date?: string
+          description?: string | null
+          fx_rate?: number | null
+          id?: string
+          installment_number?: number | null
+          notes?: string | null
+          total_installments?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "personal_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "personal_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_transactions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "personal_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "personal_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "personal_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portfolios: {
         Row: {
