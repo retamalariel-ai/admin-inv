@@ -22,6 +22,7 @@ export interface EarnPosition {
   notes:            string | null
   assets:           { ticker: string; name: string } | null
   portfolios:       { name: string; custodian_name: string | null } | null
+  principal_amount_usd?: number
 }
 
 interface Props {
@@ -146,6 +147,20 @@ export default function EarnTracker({ earnPositions }: Props) {
     toast.success('Capital actualizado')
   }
 
+  async function handleResetStartDate(id: string) {
+    const today = new Date().toISOString().slice(0, 10)
+    const res = await fetch(`/api/earn-positions/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ start_date: today }),
+    })
+    if (!res.ok) { toast.error('Error al resetear contador'); return }
+    setPositions(prev =>
+      prev.map(p => p.id === id ? { ...p, start_date: today } : p),
+    )
+    toast.success('Contador reseteado a hoy')
+  }
+
   async function handleDeactivate(id: string) {
     const res = await fetch(`/api/earn-positions/${id}`, { method: 'PATCH' })
     if (!res.ok) { toast.error('Error al desactivar'); return }
@@ -167,10 +182,12 @@ export default function EarnTracker({ earnPositions }: Props) {
     )
   }
 
-  // Daily interest for the register modal quantity
-  const registerQty = registerPos
+  // Accrued interest for the register modal quantity (daily × days)
+  const registerDaily = registerPos
     ? new Decimal(registerPos.principal_amount).mul(registerPos.apy_pct).div(100).div(365)
     : new Decimal(0)
+  const registerDays = registerPos ? daysAccrued(registerPos.start_date) : 0
+  const registerQty  = registerDaily.mul(registerDays)
 
   return (
     <div className="space-y-3">
@@ -232,7 +249,7 @@ export default function EarnTracker({ earnPositions }: Props) {
                     size="sm" variant="ghost"
                     className="h-7 w-7 p-0 text-slate-600 hover:text-red-400"
                     onClick={() => handleDeactivate(pos.id)}
-                    title="Desactivar posición"
+                    title="Desactivar posición earn"
                   >
                     <PowerOff className="h-3.5 w-3.5" />
                   </Button>
@@ -284,21 +301,26 @@ export default function EarnTracker({ earnPositions }: Props) {
 
               {/* Acciones */}
               {!isEditing && (
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    size="sm"
-                    className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs h-7 px-3"
-                    onClick={() => handleRegister(pos)}
-                  >
-                    Registrar cobro
-                  </Button>
-                  <Button
-                    size="sm" variant="outline"
-                    className="text-xs h-7 px-3 border-slate-600 text-slate-400 hover:text-slate-200"
-                    onClick={() => setEditingId(pos.id)}
-                  >
-                    Actualizar capital
-                  </Button>
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs h-7 px-3"
+                      onClick={() => handleRegister(pos)}
+                    >
+                      Registrar interés
+                    </Button>
+                    <Button
+                      size="sm" variant="outline"
+                      className="text-xs h-7 px-3 border-slate-600 text-slate-400 hover:text-slate-200"
+                      onClick={() => setEditingId(pos.id)}
+                    >
+                      Actualizar capital
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Registra los intereses acumulados como transacción en el historial
+                  </p>
                 </div>
               )}
             </div>
@@ -338,9 +360,26 @@ export default function EarnTracker({ earnPositions }: Props) {
               'periodo:DIARIO',
               `apy:${Number(registerPos.apy_pct).toFixed(2)}`,
               registerPos.platform ? `tier:${registerPos.platform}` : null,
+              `dias:${registerDays}`,
+              `diario:${registerDaily.toFixed(8)}`,
             ].filter(Boolean).join('|') + '|',
           }}
-          onSuccess={() => toast.success('Interés earn registrado')}
+          onSuccess={() => {
+            toast.success('Interés earn registrado')
+            const posId = registerPos?.id
+            if (posId) {
+              setTimeout(() => {
+                toast('¿Resetear el contador de acumulado?', {
+                  description: 'Establece start_date a hoy para reiniciar el cálculo desde cero.',
+                  action: {
+                    label: 'Resetear',
+                    onClick: () => handleResetStartDate(posId),
+                  },
+                  duration: 8000,
+                })
+              }, 600)
+            }
+          }}
         />
       )}
     </div>

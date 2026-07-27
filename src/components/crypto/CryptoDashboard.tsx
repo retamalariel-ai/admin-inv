@@ -169,7 +169,8 @@ function PositionMiniTable({ positions }: { positions: Position[] }) {
 function PortfolioSection({ group }: { group: PortfolioGroup }) {
   const { portfolio, positions, earnPositions } = group
   const badge    = CUSTODIAN_BADGE[portfolio.custodian_type] ?? { label: portfolio.custodian_type, color: 'bg-slate-700 text-slate-300' }
-  const aumUSD   = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
+  const earnAUM  = earnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0))
+  const aumUSD   = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0)).plus(earnAUM)
   const aumARS   = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
 
   // Positions sitting idle (stablecoins with no earn income)
@@ -234,8 +235,9 @@ export default function CryptoDashboard({ portfolioGroups, today }: Props) {
   const allPositions     = useMemo(() => portfolioGroups.flatMap(g => g.positions),     [portfolioGroups])
   const allEarnPositions = useMemo(() => portfolioGroups.flatMap(g => g.earnPositions), [portfolioGroups])
 
-  // Global metrics
+  // Global metrics (earn AUM from principal_amount_usd calculated server-side)
   const aumUsd  = allPositions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
+    .plus(allEarnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0)))
   const aumArs  = allPositions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
   const income  = allPositions.reduce((s, p) => s.plus(D(p.total_income_received_usd)), new Decimal(0))
   const pnlUnr  = allPositions.reduce((s, p) => s.plus(D(p.unrealized_pnl_usd)), new Decimal(0))
@@ -316,7 +318,7 @@ export default function CryptoDashboard({ portfolioGroups, today }: Props) {
               <p className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">Capital total</p>
               <p className="text-base font-semibold tabular-nums text-slate-200">
                 {formatUSD(new Decimal(
-                  allEarnPositions.reduce((s, ep) => s + ep.principal_amount, 0),
+                  allEarnPositions.reduce((s, ep) => s + (ep.principal_amount_usd ?? ep.principal_amount), 0),
                 ))}
               </p>
             </div>

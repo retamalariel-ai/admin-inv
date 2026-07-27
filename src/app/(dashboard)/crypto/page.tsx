@@ -12,6 +12,8 @@ const CRYPTO_TYPES: AssetType[] = [
   'CASH_CRYPTO_STABLE', 'CASH_CRYPTO_NATIVE',
 ]
 
+const STABLECOIN_TICKERS = new Set(['USDT', 'USDC', 'BUSD', 'DAI', 'PYUSD', 'TUSD', 'FRAX'])
+
 const CUSTODIAN_ORDER: Record<string, number> = {
   EXCHANGE_CEX:  0,
   EARN_PLATFORM: 1,
@@ -50,7 +52,22 @@ export default async function CryptoPage() {
   ])
 
   const allPositions = positions ?? []
-  const earnPositions: EarnPosition[] = rawEarnPositions ?? []
+
+  // priceMap: ticker → current_price (for earn AUM calculation)
+  const priceMap = new Map<string, number>(
+    allPositions
+      .filter(p => p.ticker != null && p.current_price != null)
+      .map(p => [p.ticker!.toUpperCase(), p.current_price as number]),
+  )
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const earnPositions: EarnPosition[] = (rawEarnPositions ?? [] as any[]).map((ep: any) => {
+    const ticker = (ep.assets?.ticker as string | undefined)?.toUpperCase()
+    const price = ticker
+      ? (STABLECOIN_TICKERS.has(ticker) ? 1 : (priceMap.get(ticker) ?? 1))
+      : 1
+    return { ...ep, principal_amount_usd: (ep.principal_amount as number) * price }
+  })
 
   // Distinct portfolio IDs present in crypto positions
   const portfolioIds = [...new Set(allPositions.map(p => p.portfolio_id).filter(Boolean))] as string[]
