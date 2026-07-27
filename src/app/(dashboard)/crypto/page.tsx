@@ -70,7 +70,12 @@ export default async function CryptoPage() {
   })
 
   // Distinct portfolio IDs present in crypto positions
-  const portfolioIds = [...new Set(allPositions.map(p => p.portfolio_id).filter(Boolean))] as string[]
+  const portfolioIds = [
+    ...new Set([
+      ...allPositions.map(p => p.portfolio_id),
+      ...earnPositions.map(ep => ep.portfolio_id),
+    ].filter(Boolean))
+  ] as string[]
 
   // Fetch portfolio metadata (custodian_type not in the view)
   const { data: portfolios } = portfolioIds.length > 0
