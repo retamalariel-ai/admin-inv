@@ -99,11 +99,13 @@ export async function POST() {
     .eq('is_active', true)
     .eq('data_source', 'BINANCE')
 
-  console.log('[prices/crypto] Binance assets:', bnAssets?.map(a => a.ticker), 'err:', bnAssetErr?.message)
+  // Excluir tickers compuestos (SOL-STAKE, USDC-MORPHO, etc.) — no tienen par en Binance
+  const tradableBnAssets = (bnAssets ?? []).filter(a => !a.ticker.includes('-'))
+  console.log('[prices/crypto] Binance assets (tradable):', tradableBnAssets.map(a => a.ticker), 'err:', bnAssetErr?.message)
 
-  if (bnAssets && bnAssets.length > 0) {
+  if (tradableBnAssets.length > 0) {
     try {
-      const symbols = JSON.stringify(bnAssets.map(a => a.ticker.toUpperCase() + 'USDT'))
+      const symbols = JSON.stringify(tradableBnAssets.map(a => a.ticker.toUpperCase() + 'USDT'))
       const url = `${BINANCE_BASE}/ticker/price?symbols=${encodeURIComponent(symbols)}`
       console.log('[prices/crypto] Binance URL:', url)
       const res = await fetch(url, { next: { revalidate: 0 } })
@@ -115,7 +117,7 @@ export async function POST() {
 
       const priceMap = new Map(ticker.map(t => [t.symbol.replace(/USDT$/, ''), parseFloat(t.price)]))
 
-      const inserts = bnAssets
+      const inserts = tradableBnAssets
         .filter(a => priceMap.has(a.ticker.toUpperCase()))
         .map(a => ({
           asset_id:   a.id,
