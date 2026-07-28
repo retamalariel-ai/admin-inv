@@ -2,6 +2,7 @@
 
 import Decimal from 'decimal.js'
 import { formatARS, formatUSD, formatPct } from '@/lib/utils/calculations'
+import type { EarnPosition } from '@/components/crypto/EarnTracker'
 
 type BaseCurrency = 'ARS' | 'USD_MEP' | 'USD_CCL' | 'USDT' | string
 
@@ -22,6 +23,7 @@ interface PortfolioSummaryProps {
     total_income_received_ars: number | null
     total_income_received_usd: number | null
   }[]
+  earnPositions?: EarnPosition[]
 }
 
 const USD_BASE_CURRENCIES: BaseCurrency[] = ['USD_MEP', 'USD_CCL', 'USDT']
@@ -58,14 +60,27 @@ function MetricCard({
   )
 }
 
-export default function PortfolioSummary({ positions, allPositions, baseCurrency = 'ARS' }: PortfolioSummaryProps) {
+export default function PortfolioSummary({
+  positions,
+  allPositions,
+  baseCurrency = 'ARS',
+  earnPositions = [],
+}: PortfolioSummaryProps) {
   const isUsdBase = USD_BASE_CURRENCIES.includes(baseCurrency)
 
-  const aumARS      = sum(positions.map(p => p.market_value_ars))
-  const aumUSD      = sum(positions.map(p => p.market_value_usd))
-  const pnlARS      = sum(positions.map(p => p.unrealized_pnl_ars))
-  const pnlUSD      = sum(positions.map(p => p.unrealized_pnl_usd))
-  const fxGain      = sum(positions.map(p => p.fx_gain_loss_ars))
+  const aumARS   = sum(positions.map(p => p.market_value_ars))
+  const spotUSD  = sum(positions.map(p => p.market_value_usd))
+  const pnlARS   = sum(positions.map(p => p.unrealized_pnl_ars))
+  const pnlUSD   = sum(positions.map(p => p.unrealized_pnl_usd))
+  const fxGain   = sum(positions.map(p => p.fx_gain_loss_ars))
+
+  // earn AUM: suma principal_amount_usd (null = sin precio, se omite)
+  const earnUSD = earnPositions.reduce(
+    (s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? 0)),
+    new Decimal(0),
+  )
+  const aumUSD = spotUSD.plus(earnUSD)
+
   const realizedARS = sum(allPositions.map(p => p.realized_gain_loss_ars))
   const realizedUSD = sum(allPositions.map(p => p.realized_gain_loss_usd))
   const incomeARS   = sum(allPositions.map(p => p.total_income_received_ars))
@@ -73,9 +88,9 @@ export default function PortfolioSummary({ positions, allPositions, baseCurrency
   const totalRetARS = pnlARS.plus(realizedARS).plus(incomeARS)
   const totalRetUSD = pnlUSD.plus(realizedUSD).plus(incomeUSD)
 
-  const dailyPnlARS    = sum(positions.map(p => p.daily_pnl_ars ?? null))
-  const hasDailyData   = positions.some(p => p.daily_pnl_ars != null)
-  const dailyPct       = aumARS.gt(0) && hasDailyData
+  const dailyPnlARS  = sum(positions.map(p => p.daily_pnl_ars ?? null))
+  const hasDailyData = positions.some(p => p.daily_pnl_ars != null)
+  const dailyPct     = aumARS.gt(0) && hasDailyData
     ? dailyPnlARS.div(aumARS.minus(dailyPnlARS))
     : null
 
@@ -85,6 +100,10 @@ export default function PortfolioSummary({ positions, allPositions, baseCurrency
   const allAbove       = belowBreakEven === 0 && withBreakEven.length > 0
 
   const hasDivergence = !isUsdBase && pnlARS.gt(0) && pnlUSD.lt(0)
+
+  // Sub text for AUM card
+  const aumSubUsdBase = formatARS(aumARS)
+  const aumSubArsBase = formatUSD(aumUSD) + (earnUSD.gt(0) ? ' incl. earn' : ' MEP')
 
   return (
     <div className="space-y-4">
@@ -112,7 +131,7 @@ export default function PortfolioSummary({ positions, allPositions, baseCurrency
             <MetricCard
               label="AUM Total"
               value={formatUSD(aumUSD)}
-              sub={formatARS(aumARS)}
+              sub={aumSubUsdBase}
               subPositive={null}
             />
 
@@ -161,7 +180,7 @@ export default function PortfolioSummary({ positions, allPositions, baseCurrency
             <MetricCard
               label="AUM Total"
               value={formatARS(aumARS)}
-              sub={formatUSD(aumUSD) + ' MEP'}
+              sub={aumSubArsBase}
               subPositive={null}
             />
 
