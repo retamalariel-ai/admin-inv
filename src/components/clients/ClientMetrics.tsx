@@ -2,18 +2,20 @@
 
 import Decimal from 'decimal.js'
 import { formatARS, formatUSD } from '@/lib/utils/calculations'
+import type { EarnPosition } from '@/components/crypto/EarnTracker'
 
 interface ClientMetricsProps {
   positions: {
-    market_value_ars:       number | null
-    market_value_usd:       number | null
-    unrealized_pnl_ars:     number | null
-    unrealized_pnl_usd:     number | null
-    realized_gain_loss_ars: number | null
+    market_value_ars:          number | null
+    market_value_usd:          number | null
+    unrealized_pnl_ars:        number | null
+    unrealized_pnl_usd:        number | null
+    realized_gain_loss_ars:    number | null
     total_income_received_ars: number | null
-    total_return_ars:       number | null
-    total_return_usd:       number | null
+    total_return_ars:          number | null
+    total_return_usd:          number | null
   }[]
+  earnPositions: EarnPosition[]
 }
 
 function sum(arr: (number | null)[]): Decimal {
@@ -39,16 +41,43 @@ function MetricCard({
   )
 }
 
-export default function ClientMetrics({ positions }: ClientMetricsProps) {
-  const totalARS     = sum(positions.map(p => p.market_value_ars))
-  const totalUSD     = sum(positions.map(p => p.market_value_usd))
-  const pnlARS       = sum(positions.map(p => p.unrealized_pnl_ars))
-  const totalRetARS  = sum(positions.map(p => p.total_return_ars))
+export default function ClientMetrics({ positions, earnPositions }: ClientMetricsProps) {
+  const spotARS     = sum(positions.map(p => p.market_value_ars))
+  const spotUSD     = sum(positions.map(p => p.market_value_usd))
+
+  // earn AUM en USD (calculado server-side via priceMap)
+  const earnUSD = earnPositions.reduce(
+    (s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)),
+    new Decimal(0),
+  )
+  const totalUSD = spotUSD.plus(earnUSD)
+
+  // Derivar tipo de cambio implícito desde posiciones spot para convertir earn a ARS
+  // (FX = totalARS / totalUSD de posiciones con ambos valores no-nulos)
+  const fxRate = (() => {
+    const arsSum = sum(positions.filter(p => (p.market_value_usd ?? 0) > 0).map(p => p.market_value_ars))
+    const usdSum = sum(positions.filter(p => (p.market_value_usd ?? 0) > 0).map(p => p.market_value_usd))
+    return usdSum.isZero() ? null : arsSum.div(usdSum)
+  })()
+
+  const earnARS  = fxRate ? earnUSD.mul(fxRate) : new Decimal(0)
+  const totalARS = spotARS.plus(earnARS)
+
+  const pnlARS      = sum(positions.map(p => p.unrealized_pnl_ars))
+  const totalRetARS = sum(positions.map(p => p.total_return_ars))
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <MetricCard label="AUM Total ARS" value={formatARS(totalARS)} sub="valuación a mercado" />
-      <MetricCard label="AUM Total USD" value={formatUSD(totalUSD)} sub="dólares MEP" />
+      <MetricCard
+        label="AUM Total ARS"
+        value={formatARS(totalARS)}
+        sub={earnARS.gt(0) ? 'incl. earn convertido' : 'valuación a mercado'}
+      />
+      <MetricCard
+        label="AUM Total USD"
+        value={formatUSD(totalUSD)}
+        sub={earnUSD.gt(0) ? `spot + ${formatUSD(earnUSD)} earn` : 'dólares MEP'}
+      />
       <MetricCard
         label="P&L No Realizado ARS"
         value={formatARS(pnlARS)}

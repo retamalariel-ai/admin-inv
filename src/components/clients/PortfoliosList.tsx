@@ -6,17 +6,19 @@ import Decimal from 'decimal.js'
 import { PlusCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { formatARS } from '@/lib/utils/calculations'
+import { formatARS, formatUSD } from '@/lib/utils/calculations'
 import NewPortfolioDialog from './NewPortfolioDialog'
 import type { Database } from '@/types/database.types'
+import type { EarnPosition } from '@/components/crypto/EarnTracker'
 
 type Portfolio = Database['public']['Tables']['portfolios']['Row']
 type Position  = Database['public']['Views']['portfolio_valuation_unified']['Row']
 
 interface PortfoliosListProps {
-  clientId:   string
-  portfolios: Portfolio[]
-  positions:  Position[]
+  clientId:      string
+  portfolios:    Portfolio[]
+  positions:     Position[]
+  earnPositions: EarnPosition[]
 }
 
 const CUSTODIAN_BADGE: Record<string, string> = {
@@ -33,11 +35,11 @@ const CUSTODIAN_LABEL: Record<string, string> = {
   WALLET_SW: 'SW', DEFI_PROTOCOL: 'DeFi', EARN_PLATFORM: 'Earn', OTRO: 'Otro',
 }
 
-export default function PortfoliosList({ clientId, portfolios, positions }: PortfoliosListProps) {
+export default function PortfoliosList({ clientId, portfolios, positions, earnPositions }: PortfoliosListProps) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  // AUM y recuento de posiciones por portfolio
+  // AUM (ARS) y recuento de posiciones spot por portfolio
   const statsMap = new Map<string, { aum: Decimal; count: number }>()
   for (const p of positions) {
     if (!p.portfolio_id) continue
@@ -46,6 +48,13 @@ export default function PortfoliosList({ clientId, portfolios, positions }: Port
       aum:   prev.aum.plus(new Decimal(p.market_value_ars ?? 0)),
       count: prev.count + 1,
     })
+  }
+
+  // earn positions agrupadas por portfolio_id
+  const earnMap = new Map<string, EarnPosition[]>()
+  for (const ep of earnPositions) {
+    const prev = earnMap.get(ep.portfolio_id) ?? []
+    earnMap.set(ep.portfolio_id, [...prev, ep])
   }
 
   return (
@@ -69,7 +78,23 @@ export default function PortfoliosList({ clientId, portfolios, positions }: Port
       ) : (
         <div className="space-y-3">
           {portfolios.map(port => {
-            const stats = statsMap.get(port.id)
+            const stats      = statsMap.get(port.id)
+            const portEarns  = earnMap.get(port.id) ?? []
+            const earnUSD    = portEarns.reduce(
+              (s, ep) => s + (ep.principal_amount_usd ?? ep.principal_amount), 0,
+            )
+            const spotCount  = stats?.count ?? 0
+            const earnCount  = portEarns.length
+            const totalCount = spotCount + earnCount
+
+            const posLabel = totalCount === 0
+              ? 'Sin posiciones'
+              : `${totalCount} posición${totalCount !== 1 ? 'es' : ''}` +
+                (earnCount > 0 && spotCount > 0 ? ` (${earnCount} earn)` : earnCount > 0 ? ' earn' : '')
+
+            const hasSpot = !!stats
+            const hasEarn = earnCount > 0
+
             return (
               <div
                 key={port.id}
@@ -84,16 +109,23 @@ export default function PortfoliosList({ clientId, portfolios, positions }: Port
                     </Badge>
                   </div>
                   <p className="text-sm text-slate-400">
-                    {port.custodian_name}
-                    {stats
-                      ? ` · ${stats.count} posición${stats.count !== 1 ? 'es' : ''}`
-                      : ' · Sin posiciones'}
+                    {port.custodian_name} · {posLabel}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-bold text-white tabular-nums">
-                    {stats ? formatARS(stats.aum) : '—'}
-                  </p>
+                  {hasSpot && (
+                    <p className="text-lg font-bold text-white tabular-nums">
+                      {formatARS(stats!.aum)}
+                    </p>
+                  )}
+                  {hasEarn && (
+                    <p className={`tabular-nums ${hasSpot ? 'text-sm text-emerald-400' : 'text-lg font-bold text-white'}`}>
+                      {formatUSD(new Decimal(earnUSD))}
+                    </p>
+                  )}
+                  {!hasSpot && !hasEarn && (
+                    <p className="text-slate-500 text-lg">—</p>
+                  )}
                   <Button
                     size="sm"
                     variant="outline"
