@@ -182,12 +182,12 @@ export default function EarnTracker({ earnPositions }: Props) {
     )
   }
 
-  // Accrued interest for the register modal quantity (daily × days)
-  const registerDaily = registerPos
+  // Proyección teórica: solo para referencia en notes, no como valor a registrar
+  const registerDaily   = registerPos
     ? new Decimal(registerPos.principal_amount).mul(registerPos.apy_pct).div(100).div(365)
     : new Decimal(0)
-  const registerDays = registerPos ? daysAccrued(registerPos.start_date) : 0
-  const registerQty  = registerDaily.mul(registerDays)
+  const registerDays    = registerPos ? daysAccrued(registerPos.start_date) : 0
+  const registerQtyRef  = registerDaily.mul(registerDays)
 
   return (
     <div className="space-y-3">
@@ -319,7 +319,7 @@ export default function EarnTracker({ earnPositions }: Props) {
                     </Button>
                   </div>
                   <p className="text-[11px] text-slate-600">
-                    Registra los intereses acumulados como transacción en el historial
+                    Ingresá el monto real acreditado por la plataforma
                   </p>
                 </div>
               )}
@@ -347,7 +347,7 @@ export default function EarnTracker({ earnPositions }: Props) {
             ticker:           registerPos.assets?.ticker ?? null,
             asset_name:       registerPos.assets?.name ?? null,
             asset_type_hint:  'CRYPTO_EARN',
-            quantity:         registerQty.toNumber(),
+            quantity:         0,
             price_per_unit:   0,
             gross_amount:     null,
             alyce_commission: 0,
@@ -357,11 +357,10 @@ export default function EarnTracker({ earnPositions }: Props) {
             comitente:        null,
             operation_number: null,
             notes:            [
-              'periodo:DIARIO',
+              'periodo:MANUAL',
               `apy:${Number(registerPos.apy_pct).toFixed(2)}`,
+              `proyectado_diario:${registerDaily.toFixed(8)}`,
               registerPos.platform ? `tier:${registerPos.platform}` : null,
-              `dias:${registerDays}`,
-              `diario:${registerDaily.toFixed(8)}`,
             ].filter(Boolean).join('|') + '|',
           }}
           onSuccess={() => {
