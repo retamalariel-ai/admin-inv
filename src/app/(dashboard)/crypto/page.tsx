@@ -60,13 +60,56 @@ export default async function CryptoPage() {
       .map(p => [p.ticker!.toUpperCase(), p.current_price as number]),
   )
 
+  // Tickers de earn sin precio en priceMap → buscar fallback en price_quotes
+  const rawEarnArr = (rawEarnPositions ?? []) as any[]
+  const missingTickers = [...new Set(
+    rawEarnArr.flatMap((ep: any) => {
+      const ticker = (ep.assets?.ticker as string | undefined)?.toUpperCase() ?? ''
+      const base   = ticker.split('-')[0]
+      if (STABLECOIN_TICKERS.has(base) || STABLECOIN_TICKERS.has(ticker)) return []
+      if (priceMap.has(base) || priceMap.has(ticker)) return []
+      return [base]
+    }),
+  )]
+
+  // eslint-disable-next-line prefer-const
+  let fallbackMap = new Map<string, number>()
+  if (missingTickers.length > 0) {
+    const { data: assetRows } = await supabase
+      .from('assets')
+      .select('id, ticker')
+      .in('ticker', missingTickers)
+    const idToTicker = new Map(
+      (assetRows ?? []).map(a => [a.id as string, (a.ticker as string).toUpperCase()])
+    )
+    const assetIds = [...idToTicker.keys()]
+    if (assetIds.length > 0) {
+      const { data: pqRows } = await supabaseSvc
+        .from('price_quotes')
+        .select('asset_id, price')
+        .in('asset_id', assetIds)
+        .order('quote_date', { ascending: false })
+        .limit(assetIds.length * 5)
+      for (const row of ((pqRows ?? []) as { asset_id: string; price: number }[])) {
+        const t = idToTicker.get(row.asset_id)
+        if (t && !fallbackMap.has(t)) fallbackMap.set(t, Number(row.price))
+      }
+    }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const earnPositions: EarnPosition[] = (rawEarnPositions ?? [] as any[]).map((ep: any) => {
-    const ticker = (ep.assets?.ticker as string | undefined)?.toUpperCase()
-    const price = ticker
-      ? (STABLECOIN_TICKERS.has(ticker) ? 1 : (priceMap.get(ticker) ?? 1))
-      : 1
-    return { ...ep, principal_amount_usd: (ep.principal_amount as number) * price }
+  const earnPositions: EarnPosition[] = rawEarnArr.map((ep: any) => {
+    const ticker     = (ep.assets?.ticker as string | undefined)?.toUpperCase() ?? ''
+    const baseTicker = ticker.split('-')[0]
+    const isStable   = STABLECOIN_TICKERS.has(baseTicker) || STABLECOIN_TICKERS.has(ticker)
+    const price      = isStable ? 1
+      : (priceMap.get(baseTicker) ?? priceMap.get(ticker)
+         ?? fallbackMap.get(baseTicker) ?? fallbackMap.get(ticker)
+         ?? null)
+    return {
+      ...ep,
+      principal_amount_usd: price != null ? (ep.principal_amount as number) * price : null,
+    }
   })
 
   // Distinct portfolio IDs present in crypto positions
