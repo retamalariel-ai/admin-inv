@@ -71,6 +71,24 @@ function daysAccruedEarn(startDate: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(startDate).getTime()) / 86_400_000))
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function getMoveToEarnUrl(ticker: string, custodianType: string): string | null {
+  const t = ticker.toUpperCase()
+  switch (custodianType) {
+    case 'EXCHANGE_CEX':
+      return 'https://www.binance.com/en/earn'
+    case 'EARN_PLATFORM':
+      return 'https://app.nexo.com/earn'
+    case 'WALLET_HW':
+    case 'WALLET_SW':
+      if (['USDT', 'USDC', 'DAI', 'FRAX'].includes(t)) return 'https://app.morpho.org'
+      if (t === 'ETH' || t === 'WETH')                  return 'https://app.morpho.org'
+      return null
+    default:
+      return null
+  }
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 function MetricCard({ label, value, sub, positive }: {
   label: string; value: string; sub?: string; positive?: boolean | null
@@ -166,19 +184,78 @@ function PositionMiniTable({ positions }: { positions: Position[] }) {
   )
 }
 
-function PortfolioSection({ group }: { group: PortfolioGroup }) {
-  const { portfolio, positions, earnPositions } = group
-  const badge    = CUSTODIAN_BADGE[portfolio.custodian_type] ?? { label: portfolio.custodian_type, color: 'bg-slate-700 text-slate-300' }
-  const earnAUM  = earnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0))
-  const aumUSD   = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0)).plus(earnAUM)
-  const aumARS   = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
-
-  // Positions sitting idle (stablecoins with no earn income)
-  const idlePositions = positions.filter(p =>
+function IdleFundsWidget({ positions, custodianType }: {
+  positions:     Position[]
+  custodianType: string
+}) {
+  const idle = positions.filter(p =>
     IDLE_TYPES.includes(p.asset_type as AssetType) &&
     D(p.quantity_held).gt(0) &&
     (p.total_income_received_usd ?? 0) === 0,
   )
+  if (idle.length === 0) return null
+
+  const totalIdleUSD = idle.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
+
+  return (
+    <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
+            Fondos sin rendimiento
+          </span>
+          <Badge className="bg-amber-900/50 text-amber-300 text-xs border-0">
+            {idle.length} posición{idle.length !== 1 ? 'es' : ''}
+          </Badge>
+        </div>
+        <span className="text-sm font-semibold tabular-nums text-amber-300">
+          {formatUSD(totalIdleUSD)}
+        </span>
+      </div>
+      <div className="space-y-2">
+        {idle.map((p, i) => {
+          const url = getMoveToEarnUrl(p.ticker ?? '', custodianType)
+          return (
+            <div key={`${p.asset_id}-${i}`} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-semibold text-slate-300">
+                  {p.ticker ?? '—'}
+                </span>
+                <span className="tabular-nums text-slate-500 text-xs">
+                  {p.quantity_held != null ? formatCrypto(D(p.quantity_held)) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="tabular-nums text-slate-200 text-xs font-medium">
+                  {p.market_value_usd != null ? formatUSD(D(p.market_value_usd)) : '—'}
+                </span>
+                {url ? (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-medium whitespace-nowrap transition-colors"
+                  >
+                    Mover a Earn →
+                  </a>
+                ) : (
+                  <span className="text-xs text-slate-600 whitespace-nowrap">sin earn disponible</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function PortfolioSection({ group }: { group: PortfolioGroup }) {
+  const { portfolio, positions, earnPositions } = group
+  const badge   = CUSTODIAN_BADGE[portfolio.custodian_type] ?? { label: portfolio.custodian_type, color: 'bg-slate-700 text-slate-300' }
+  const earnAUM = earnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0))
+  const aumUSD  = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0)).plus(earnAUM)
+  const aumARS  = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
 
   // Sort: by market_value_usd desc
   const sorted = [...positions].sort((a, b) => D(b.market_value_usd).minus(D(a.market_value_usd)).toNumber())
@@ -195,11 +272,6 @@ function PortfolioSection({ group }: { group: PortfolioGroup }) {
               <p className="text-xs text-slate-500">{portfolio.custodian_name}</p>
             )}
           </div>
-          {idlePositions.length > 0 && (
-            <Badge className="bg-amber-900/50 text-amber-300 text-xs ml-2">
-              {idlePositions.length} fondo{idlePositions.length > 1 ? 's' : ''} en espera
-            </Badge>
-          )}
         </div>
         <div className="text-right">
           <p className="text-slate-100 font-semibold tabular-nums">{formatUSD(aumUSD)}</p>
@@ -210,6 +282,8 @@ function PortfolioSection({ group }: { group: PortfolioGroup }) {
       {/* Positions table */}
       <div className="p-4 space-y-4">
         <PositionMiniTable positions={sorted} />
+
+        <IdleFundsWidget positions={sorted} custodianType={portfolio.custodian_type} />
 
         {/* Earn tracker for this portfolio */}
         {earnPositions.length > 0 && (
