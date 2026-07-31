@@ -84,19 +84,25 @@ export async function POST() {
 
   const supabase = getServiceClient()
 
-  const { error } = await supabase.from('fx_rates').insert({
-    rate_date:      date,
-    rate_time:      time,
-    rate_mep:       mep,
-    rate_ccl:       ccl,
-    rate_oficial:   oficial,
-    rate_blue:      blue,
-    mep_ticker_ars: 'AL30',
-    mep_ticker_usd: 'AL30D',
-    ccl_ticker_ars: cclTickerArs,
-    ccl_ticker_usd: cclTickerUsd,
-    source,
-  })
+  const { error } = await supabase.from('fx_rates').upsert(
+    {
+      rate_date:      date,
+      rate_time:      time,
+      rate_mep:       mep,
+      rate_ccl:       ccl,
+      rate_oficial:   oficial,
+      rate_blue:      blue,
+      mep_ticker_ars: 'AL30',
+      mep_ticker_usd: 'AL30D',
+      ccl_ticker_ars: cclTickerArs,
+      ccl_ticker_usd: cclTickerUsd,
+      source,
+    },
+    {
+      onConflict:       'rate_date,source',
+      ignoreDuplicates: false,
+    },
+  )
 
   if (error) {
     return Response.json({ success: false, error: error.message }, { status: 500 })
