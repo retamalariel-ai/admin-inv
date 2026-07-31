@@ -13,7 +13,7 @@ Campos a extraer:
 - settlement_date: fecha de liquidación en formato YYYY-MM-DD (string | null)
 - ticker: símbolo del activo (string | null). Ejemplos: "AL30", "GD30", "CEDEAR YPF", "MERVAL".
 - asset_name: nombre completo del activo (string | null)
-- asset_type_hint: "BONO_SOBERANO" | "BONO_SUBSOBERANO" | "ON" | "LETES" | "LECAP" | "ACCION" | "FCI" | "CEDEAR" | null
+- asset_type_hint: "BONO_SOBERANO" | "BONO_SUBSOBERANO" | "ON" | "LETES" | "LECAP" | "ACCION_LOCAL" | "CEDEAR" | "FCI_MONEY_MARKET" | "FCI_RENTA_FIJA" | "FCI_RENTA_VARIABLE" | "FCI_RENTA_MIXTA" | "CRYPTO_SPOT" | "CRYPTO_STABLECOIN" | "CRYPTO_EARN" | "CRYPTO_DEFI_LP" | "CRYPTO_DEFI_STAKE" | "CRYPTO_DEFI_LENDING". IMPORTANTE: NUNCA devuelvas null para este campo. Si no podés determinarlo con certeza, usá ON para bonos corporativos, BONO_SOBERANO para soberanos, CEDEAR para ADRs/ETFs extranjeros, ACCION_LOCAL para acciones argentinas, CRYPTO_SPOT para crypto. El campo es obligatorio.
 - quantity: cantidad (number | null). Para bonos es el VN nominal.
 - price_per_unit: precio por unidad o VN 100 (number | null)
 - gross_amount: monto bruto = cantidad × precio (number | null)
@@ -91,7 +91,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Claude no devolvió texto' }, { status: 500 })
     }
 
-    let parsed: unknown
+    console.log('[parse-pdf] raw response:', textBlock.text.slice(0, 500))
+
+    let parsed: Record<string, unknown>
     try {
       parsed = JSON.parse(textBlock.text.trim())
     } catch {
@@ -99,6 +101,17 @@ export async function POST(request: Request) {
         { error: 'No se pudo parsear la respuesta de Claude', raw: textBlock.text },
         { status: 500 },
       )
+    }
+
+    // Inferir asset_type_hint desde ticker si Claude lo dejó null
+    if (!parsed.asset_type_hint && parsed.ticker) {
+      const t = String(parsed.ticker).toUpperCase()
+      if (t.startsWith('GD') || t.startsWith('AL') || t.startsWith('AE'))
+        parsed.asset_type_hint = 'BONO_SOBERANO'
+      else if (t.endsWith('O') || t.endsWith('C'))
+        parsed.asset_type_hint = 'ON'
+      else if (t.endsWith('D'))
+        parsed.asset_type_hint = 'CEDEAR'
     }
 
     return NextResponse.json({ data: parsed })
