@@ -48,6 +48,27 @@ export default function FXRatesTable({ rates }: Props) {
   const router          = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
 
+  const dailyRates = Object.values(
+    rates.reduce((acc, rate) => {
+      const d = rate.rate_date
+      if (!acc[d]) {
+        acc[d] = { ...rate }
+      } else {
+        const priority = (s: string) =>
+          s === 'IOL_CALCULADO' ? 3 : s === 'PPI_CALCULADO' ? 2 : 1
+        if (rate.rate_mep != null && priority(rate.source) > priority(acc[d].source)) {
+          acc[d].rate_mep  = rate.rate_mep
+          acc[d].rate_ccl  = rate.rate_ccl
+          acc[d].source    = rate.source
+          acc[d].rate_time = rate.rate_time
+        }
+        if (rate.rate_blue    != null) acc[d].rate_blue    = rate.rate_blue
+        if (rate.rate_oficial != null) acc[d].rate_oficial = rate.rate_oficial
+      }
+      return acc
+    }, {} as Record<string, typeof rates[0]>)
+  ).sort((a, b) => b.rate_date.localeCompare(a.rate_date))
+
   async function callEndpoint(label: string, url: string, body?: object) {
     setBusy(label)
     try {
@@ -114,14 +135,14 @@ export default function FXRatesTable({ rates }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rates.length === 0 && (
+              {dailyRates.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-slate-500 py-10 text-sm">
                     Sin registros. Presioná "Actualizar FX".
                   </TableCell>
                 </TableRow>
               )}
-              {rates.map((r, i) => {
+              {dailyRates.map((r, i) => {
                 const isLatest   = i === 0
                 const badgeCls   = SOURCE_BADGE[r.source] ?? 'bg-slate-700/60 text-slate-400 border-slate-600'
                 const rowCls     = isLatest
@@ -160,7 +181,7 @@ export default function FXRatesTable({ rates }: Props) {
       </div>
 
       <p className="text-xs text-slate-500 text-right">
-        MEP/CCL vía IOL &middot; Blue/Oficial vía DolarAPI &nbsp;·&nbsp; {rates.length} registros
+        MEP/CCL vía IOL &middot; Blue/Oficial vía DolarAPI &nbsp;·&nbsp; {dailyRates.length} días ({rates.length} registros)
       </p>
     </div>
   )

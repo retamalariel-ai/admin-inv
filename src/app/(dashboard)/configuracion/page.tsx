@@ -11,7 +11,7 @@ export default async function ConfiguracionPage() {
     .select('rate_date, rate_mep, rate_ccl, rate_blue, rate_oficial, source, rate_time')
     .order('rate_date', { ascending: false })
     .order('rate_time', { ascending: false, nullsFirst: false })
-    .limit(90)
+    .limit(500)
 
   return (
     <div className="space-y-6">
