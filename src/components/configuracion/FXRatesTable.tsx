@@ -45,8 +45,14 @@ function fmtARS(v: number | null): string {
 }
 
 export default function FXRatesTable({ rates }: Props) {
-  const router        = useRouter()
+  const router          = useRouter()
   const [busy, setBusy] = useState<string | null>(null)
+
+  // Un registro por día — el primero ya es el más reciente (order DESC)
+  const dailyRates = rates.reduce((acc, rate) => {
+    if (!acc.some(r => r.rate_date === rate.rate_date)) acc.push(rate)
+    return acc
+  }, [] as typeof rates)
 
   async function callEndpoint(label: string, url: string, body?: object) {
     setBusy(label)
@@ -114,14 +120,14 @@ export default function FXRatesTable({ rates }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rates.length === 0 && (
+              {dailyRates.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-slate-500 py-10 text-sm">
                     Sin registros. Presioná "Actualizar FX".
                   </TableCell>
                 </TableRow>
               )}
-              {rates.map((r, i) => {
+              {dailyRates.map((r, i) => {
                 const isLatest   = i === 0
                 const badgeCls   = SOURCE_BADGE[r.source] ?? 'bg-slate-700/60 text-slate-400 border-slate-600'
                 const rowCls     = isLatest
@@ -160,7 +166,7 @@ export default function FXRatesTable({ rates }: Props) {
       </div>
 
       <p className="text-xs text-slate-600 text-right">
-        {rates.length} registros · últimos 90 días
+        {dailyRates.length} días
       </p>
     </div>
   )
