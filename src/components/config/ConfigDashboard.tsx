@@ -382,51 +382,66 @@ export default function ConfigDashboard({ assets, fxRates, latestPrices, systemS
           </Button>
         </div>
 
-        <p className="text-sm text-slate-400">Últimos 30 registros</p>
-        <div className="rounded-lg border border-slate-700 overflow-x-auto">
+        <p className="text-sm text-slate-400">Últimos 90 registros</p>
+        <div className="rounded-lg border border-slate-700 overflow-x-auto max-h-[600px] overflow-y-auto">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-slate-900 z-10">
               <TableRow className="border-slate-700 hover:bg-transparent">
                 <TableHead>Fecha</TableHead>
-                <TableHead>Hora</TableHead>
                 <TableHead className="text-right">MEP</TableHead>
                 <TableHead className="text-right">CCL</TableHead>
-                <TableHead className="text-right">Oficial</TableHead>
                 <TableHead className="text-right">Blue</TableHead>
+                <TableHead className="text-right">Oficial</TableHead>
                 <TableHead>Fuente</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fxRates.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-slate-500 py-8">
+                  <TableCell colSpan={6} className="text-center text-slate-500 py-8">
                     Sin registros FX
                   </TableCell>
                 </TableRow>
               )}
-              {fxRates.map(r => (
-                <TableRow key={r.id} className="border-slate-700 hover:bg-slate-800/50">
-                  <TableCell className="text-slate-300 tabular-nums">{r.rate_date}</TableCell>
-                  <TableCell className="text-slate-500 text-xs tabular-nums">
-                    {r.rate_time?.slice(0, 5) ?? '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-100">
-                    {r.rate_mep != null ? new Decimal(r.rate_mep).toFixed(2) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-100">
-                    {r.rate_ccl != null ? new Decimal(r.rate_ccl).toFixed(2) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-300">
-                    {r.rate_oficial != null ? new Decimal(r.rate_oficial).toFixed(2) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-slate-300">
-                    {r.rate_blue != null ? new Decimal(r.rate_blue).toFixed(2) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className="text-xs bg-slate-700/60 text-slate-400">{r.source}</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {fxRates.map(r => {
+                const [y, m, d] = r.rate_date.split('-')
+                const dateLabel = `${d}/${m}/${y}`
+                const fmtARS = (v: number | null) =>
+                  v != null
+                    ? '$ ' + new Decimal(v).toFixed(2)
+                        .replace('.', ',')
+                        .replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+                    : '—'
+                const sourceBadge: Record<string, string> = {
+                  IOL_CALCULADO:   'bg-emerald-900/60 text-emerald-300 border-emerald-700/40',
+                  PPI_CALCULADO:   'bg-yellow-900/60  text-yellow-300  border-yellow-700/40',
+                  DOLARAPI:        'bg-blue-900/60    text-blue-300    border-blue-700/40',
+                  ARGENTINADATOS:  'bg-slate-700/60   text-slate-300   border-slate-600',
+                  MANUAL:          'bg-orange-900/60  text-orange-300  border-orange-700/40',
+                }
+                const badgeCls = sourceBadge[r.source] ?? 'bg-slate-700/60 text-slate-400 border-slate-600'
+
+                return (
+                  <TableRow key={r.id} className="border-slate-700 hover:bg-slate-800/50">
+                    <TableCell className="text-slate-300 tabular-nums whitespace-nowrap">{dateLabel}</TableCell>
+                    <TableCell className="text-right tabular-nums text-slate-100 font-medium">
+                      {fmtARS(r.rate_mep)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-slate-100 font-medium">
+                      {fmtARS(r.rate_ccl)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-slate-300">
+                      {fmtARS(r.rate_blue)}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-slate-300">
+                      {fmtARS(r.rate_oficial)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`text-xs border ${badgeCls}`}>{r.source}</Badge>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>

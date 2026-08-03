@@ -22,7 +22,7 @@ export default async function ConfigPage() {
       .select('*')
       .order('rate_date', { ascending: false })
       .order('rate_time', { ascending: false, nullsFirst: false })
-      .limit(30),
+      .limit(90),
     supabase
       .from('price_quotes')
       .select('asset_id, quote_date, quote_time, price, currency, source, assets(ticker, name, asset_type)')

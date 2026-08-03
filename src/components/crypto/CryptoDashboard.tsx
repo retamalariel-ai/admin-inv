@@ -253,8 +253,7 @@ function IdleFundsWidget({ positions, custodianType }: {
 function PortfolioSection({ group }: { group: PortfolioGroup }) {
   const { portfolio, positions, earnPositions } = group
   const badge   = CUSTODIAN_BADGE[portfolio.custodian_type] ?? { label: portfolio.custodian_type, color: 'bg-slate-700 text-slate-300' }
-  const earnAUM = earnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0))
-  const aumUSD  = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0)).plus(earnAUM)
+  const aumUSD  = positions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
   const aumARS  = positions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
 
   // Sort: by market_value_usd desc
@@ -309,9 +308,8 @@ export default function CryptoDashboard({ portfolioGroups, today }: Props) {
   const allPositions     = useMemo(() => portfolioGroups.flatMap(g => g.positions),     [portfolioGroups])
   const allEarnPositions = useMemo(() => portfolioGroups.flatMap(g => g.earnPositions), [portfolioGroups])
 
-  // Global metrics (earn AUM from principal_amount_usd calculated server-side)
+  // Global metrics — earn assets now valued via underlying_asset_id in the view
   const aumUsd  = allPositions.reduce((s, p) => s.plus(D(p.market_value_usd)), new Decimal(0))
-    .plus(allEarnPositions.reduce((s, ep) => s.plus(new Decimal(ep.principal_amount_usd ?? ep.principal_amount)), new Decimal(0)))
   const aumArs  = allPositions.reduce((s, p) => s.plus(D(p.market_value_ars)), new Decimal(0))
   const income  = allPositions.reduce((s, p) => s.plus(D(p.total_income_received_usd)), new Decimal(0))
   const pnlUnr  = allPositions.reduce((s, p) => s.plus(D(p.unrealized_pnl_usd)), new Decimal(0))

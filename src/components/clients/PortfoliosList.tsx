@@ -80,9 +80,6 @@ export default function PortfoliosList({ clientId, portfolios, positions, earnPo
           {portfolios.map(port => {
             const stats      = statsMap.get(port.id)
             const portEarns  = earnMap.get(port.id) ?? []
-            const earnUSD    = portEarns.reduce(
-              (s, ep) => s + (ep.principal_amount_usd ?? ep.principal_amount), 0,
-            )
             const spotCount  = stats?.count ?? 0
             const earnCount  = portEarns.length
             const totalCount = spotCount + earnCount
@@ -113,17 +110,11 @@ export default function PortfoliosList({ clientId, portfolios, positions, earnPo
                   </p>
                 </div>
                 <div className="text-right shrink-0">
-                  {hasSpot && (
+                  {hasSpot ? (
                     <p className="text-lg font-bold text-white tabular-nums">
                       {formatARS(stats!.aum)}
                     </p>
-                  )}
-                  {hasEarn && (
-                    <p className={`tabular-nums ${hasSpot ? 'text-sm text-emerald-400' : 'text-lg font-bold text-white'}`}>
-                      {formatUSD(new Decimal(earnUSD))}
-                    </p>
-                  )}
-                  {!hasSpot && !hasEarn && (
+                  ) : (
                     <p className="text-slate-500 text-lg">—</p>
                   )}
                   <Button
