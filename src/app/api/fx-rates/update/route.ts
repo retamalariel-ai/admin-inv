@@ -24,7 +24,7 @@ export async function POST() {
   let oficial:        number | null = null
   let blue:           number | null = null
   let source = 'DOLARAPI'
-  let cclTickerArs    = 'AE30'
+  let cclTickerArs    = 'GD30'
   let cclTickerUsd    = 'GD30D'
 
   // ── 1. MEP/CCL desde IOL (precios BYMA oficiales — mayor precisión) ───────
@@ -71,8 +71,11 @@ export async function POST() {
     oficial = findVenta('oficial')
     blue    = findVenta('blue')
 
-    if (mep == null) { mep = findVenta('bolsa');           source = 'DOLARAPI' }
-    if (ccl == null) { ccl = findVenta('contadoconliqui'); source = 'DOLARAPI' }
+    // Fallback MEP/CCL solo si IOL y PPI fallaron
+    const fromPrimary = source === 'IOL_CALCULADO' || source === 'PPI_CALCULADO'
+    if (mep == null) mep = findVenta('bolsa')
+    if (ccl == null) ccl = findVenta('contadoconliqui')
+    if (!fromPrimary) source = 'DOLARAPI'
   } catch (e) {
     console.warn('[fx-rates/update] dolarapi also failed:', e)
   }

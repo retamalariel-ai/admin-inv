@@ -122,12 +122,12 @@ export interface IOLRates {
 
 export async function calculateRatesFromIOL(): Promise<IOLRates> {
   // MEP  = AL30_ARS / AL30D_USD  (Bonares, mismo ticker en IOL)
-  // CCL  primario:  AE30_ARS  / GD30D_USD  (Global 2030)
+  // CCL  primario:  GD30_ARS  / GD30D_USD  (Global 2030, misma serie en ambas patas)
   // CCL  fallback:  AE38_ARS  / AE38D_USD  (Global 2038 — mayor liquidez)
-  const [al30, al30d, ae30, gd30d, ae38, ae38d] = await Promise.allSettled([
+  const [al30, al30d, gd30, gd30d, ae38, ae38d] = await Promise.allSettled([
     getIOLQuote('AL30'),
     getIOLQuote('AL30D'),
-    getIOLQuote('AE30'),
+    getIOLQuote('GD30'),
     getIOLQuote('GD30D'),
     getIOLQuote('AE38'),
     getIOLQuote('AE38D'),
@@ -145,9 +145,9 @@ export async function calculateRatesFromIOL(): Promise<IOLRates> {
   let ccl_ticker_ars: string | null = null
   let ccl_ticker_usd: string | null = null
 
-  if (p(ae30) != null && p(gd30d) != null) {
-    ccl            = p(ae30)! / p(gd30d)!
-    ccl_ticker_ars = 'AE30'
+  if (p(gd30) != null && p(gd30d) != null) {
+    ccl            = p(gd30)! / p(gd30d)!
+    ccl_ticker_ars = 'GD30'
     ccl_ticker_usd = 'GD30D'
   } else if (p(ae38) != null && p(ae38d) != null) {
     // AE38/AE38D como fallback — ambos en VN100, la proporción ARS/USD es idéntica
