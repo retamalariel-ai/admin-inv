@@ -135,7 +135,7 @@ export async function POST(req: Request) {
     const { error: dbErr } = await supabase.from('personal_transactions').insert({
       account_id:  accountId,
       category_id: category.id,
-      type:        parsed.type,
+      type:        parsed.type.toUpperCase(),
       amount:      parsed.amount,
       currency,
       description: parsed.description ?? text,
