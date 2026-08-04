@@ -130,6 +130,7 @@ export async function POST(req: Request) {
     const now  = new Date()
     const date = now.toISOString().slice(0, 10)
 
+    console.log('[telegram/webhook] parsed:', JSON.stringify(parsed))
     const supabase         = getServiceClient()
     const { error: dbErr } = await supabase.from('personal_transactions').insert({
       account_id:  accountId,
@@ -143,7 +144,7 @@ export async function POST(req: Request) {
     })
 
     if (dbErr) {
-      console.error('[telegram/webhook] db error:', dbErr)
+      console.error('[telegram/webhook] DB error:', JSON.stringify(dbErr))
       await sendTelegramMessage(chatId, '❌ Error al guardar. Intentá de nuevo.')
       return new Response('ok', { status: 200 })
     }
