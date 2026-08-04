@@ -24,39 +24,33 @@ export async function POST() {
   let oficial:        number | null = null
   let blue:           number | null = null
   let source = 'DOLARAPI'
-  let cclTickerArs    = 'GD30'
-  let cclTickerUsd    = 'GD30D'
 
-  // ── 1. MEP/CCL desde IOL (precios BYMA oficiales — mayor precisión) ───────
+  // ── 1. MEP desde IOL (AL30/AL30D — mayor liquidez en BYMA) ──────────────
+  // CCL NO se toma de IOL: precios BYMA difieren ~$55 del CCL real de mercado.
   try {
     const rates = await calculateRatesFromIOL()
-    if (rates.mep != null && rates.ccl != null) {
-      mep         = rates.mep
-      ccl         = rates.ccl
-      source      = 'IOL_CALCULADO'
-      cclTickerArs = rates.ccl_ticker_ars ?? 'AE30'
-      cclTickerUsd = rates.ccl_ticker_usd ?? 'GD30D'
+    if (rates.mep != null) {
+      mep    = rates.mep
+      source = 'IOL_CALCULADO'
     }
   } catch (e) {
     console.warn('[fx-rates/update] IOL failed, trying PPI:', e)
 
-    // ── 2. Fallback a PPI ─────────────────────────────────────────────────
+    // ── 2. Fallback MEP desde PPI ─────────────────────────────────────────
     try {
       const rates = await calculateRatesFromPPI()
-      if (rates.mep != null && rates.ccl != null) {
-        mep         = rates.mep
-        ccl         = rates.ccl
-        source      = 'PPI_CALCULADO'
-        cclTickerArs = 'GD30'
-        cclTickerUsd = 'GD30D'
+      if (rates.mep != null) {
+        mep    = rates.mep
+        source = 'PPI_CALCULADO'
       }
     } catch (e2) {
-      console.warn('[fx-rates/update] PPI also failed, will use dolarapi for MEP/CCL:', e2)
+      console.warn('[fx-rates/update] PPI also failed, will use dolarapi for MEP:', e2)
     }
   }
 
-  // ── 3. Oficial/Blue siempre desde dolarapi (IOL y PPI no los proveen) ────
-  // Si ninguno de los anteriores dio MEP/CCL, también los tomamos de acá.
+  // ── 3. CCL + Oficial + Blue siempre desde DOLARAPI ────────────────────────
+  // CCL de DOLARAPI es más representativo del mercado real que BYMA.
+  // Si IOL/PPI fallaron, MEP también viene de acá.
   try {
     const res = await fetch('https://dolarapi.com/v1/dolares', {
       next:    { revalidate: 0 },
@@ -68,14 +62,14 @@ export async function POST() {
     const findVenta = (casa: string) =>
       dolares.find(d => d.casa.toLowerCase() === casa.toLowerCase())?.venta ?? null
 
+    ccl     = findVenta('contadoconliqui')  // siempre desde DOLARAPI
     oficial = findVenta('oficial')
     blue    = findVenta('blue')
 
-    // Fallback MEP/CCL solo si IOL y PPI fallaron
-    const fromPrimary = source === 'IOL_CALCULADO' || source === 'PPI_CALCULADO'
-    if (mep == null) mep = findVenta('bolsa')
-    if (ccl == null) ccl = findVenta('contadoconliqui')
-    if (!fromPrimary) source = 'DOLARAPI'
+    if (mep == null) {
+      mep    = findVenta('bolsa')
+      source = 'DOLARAPI'
+    }
   } catch (e) {
     console.warn('[fx-rates/update] dolarapi also failed:', e)
   }
@@ -97,8 +91,8 @@ export async function POST() {
       rate_blue:      blue,
       mep_ticker_ars: 'AL30',
       mep_ticker_usd: 'AL30D',
-      ccl_ticker_ars: cclTickerArs,
-      ccl_ticker_usd: cclTickerUsd,
+      ccl_ticker_ars: 'GD30',   // referencia — valor viene de DOLARAPI
+      ccl_ticker_usd: 'GD30D',
       source,
     },
     {
@@ -112,12 +106,13 @@ export async function POST() {
   }
 
   return Response.json({
-    success:   true,
+    success:    true,
     source,
     mep,
     ccl,
     oficial,
     blue,
-    timestamp: `${date}T${time}`,
+    ccl_source: 'DOLARAPI',
+    timestamp:  `${date}T${time}`,
   })
 }
