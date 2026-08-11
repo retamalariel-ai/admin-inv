@@ -1034,6 +1034,7 @@ export type Database = {
           price_high: number | null
           price_low: number | null
           price_open: number | null
+          price_usd: number | null
           quote_date: string
           quote_time: string | null
           source: string
@@ -1054,6 +1055,7 @@ export type Database = {
           price_high?: number | null
           price_low?: number | null
           price_open?: number | null
+          price_usd?: number | null
           quote_date: string
           quote_time?: string | null
           source: string
@@ -1074,6 +1076,7 @@ export type Database = {
           price_high?: number | null
           price_low?: number | null
           price_open?: number | null
+          price_usd?: number | null
           quote_date?: string
           quote_time?: string | null
           source?: string
@@ -1284,6 +1287,7 @@ export type Database = {
           client_id: string | null
           client_name: string | null
           current_price: number | null
+          current_price_usd: number | null
           current_residual_factor: number | null
           custodian_name: string | null
           custodian_type: string | null

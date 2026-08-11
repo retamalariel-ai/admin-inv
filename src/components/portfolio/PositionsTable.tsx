@@ -93,11 +93,21 @@ function formatQty(pos: Position): string {
   return isCrypto(pos.asset_type) ? formatCrypto(qty) : qty.toFixed(2)
 }
 
+const FCI_TYPES: AssetType[] = [
+  'FCI_MONEY_MARKET', 'FCI_RENTA_FIJA', 'FCI_RENTA_VARIABLE', 'FCI_RENTA_MIXTA',
+]
+
+function isFciUsd(pos: Position): boolean {
+  return FCI_TYPES.includes(pos.asset_type as AssetType) && pos.asset_currency !== 'ARS'
+}
+
 function formatPrice(pos: Position): string {
   if (pos.current_price == null) return '—'
-  const p = new Decimal(pos.current_price)
-  if (isCrypto(pos.asset_type)) return formatUSD(p)
-  return formatARS(p)
+  if (isCrypto(pos.asset_type)) return formatUSD(new Decimal(pos.current_price))
+  if (isFciUsd(pos)) return pos.current_price_usd != null
+    ? formatUSD(new Decimal(pos.current_price_usd))
+    : '—'
+  return formatARS(new Decimal(pos.current_price))
 }
 
 function formatPPP(pos: Position): string {
@@ -423,7 +433,7 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                           {formatQty(pos)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-slate-400 text-sm">
-                          {isUsdBase
+                          {isUsdBase || isFciUsd(pos)
                             ? (pos.ppp_usd != null ? formatUSD(new Decimal(pos.ppp_usd)) : '—')
                             : formatPPP(pos)}
                         </TableCell>
