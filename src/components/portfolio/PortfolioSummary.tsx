@@ -43,15 +43,15 @@ function MetricCard({
 }) {
   const color =
     positive === null || positive === undefined
-      ? 'text-white'
-      : positive ? 'text-emerald-400' : 'text-red-400'
+      ? 'text-foreground'
+      : positive ? 'text-success' : 'text-destructive'
   const subColor =
     subPositive === null || subPositive === undefined
-      ? 'text-slate-400'
-      : subPositive ? 'text-emerald-500' : 'text-red-400'
+      ? 'text-muted-foreground'
+      : subPositive ? 'text-success' : 'text-destructive'
   return (
-    <div className="rounded-xl bg-slate-800 border border-slate-700 p-5">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+    <div className="rounded-lg bg-card border border-border p-5">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
       {sub && (
         <p className={`text-sm font-semibold tabular-nums mt-0.5 ${subColor}`}>{sub}</p>
@@ -108,18 +108,18 @@ export default function PortfolioSummary({
   return (
     <div className="space-y-4">
       {hasDivergence && (
-        <div className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-5">
-          <p className="text-amber-400 text-sm font-semibold mb-2">
+        <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-5">
+          <p className="text-amber-600 text-sm font-semibold mb-2">
             ⚠ Atención — Efecto devaluación
           </p>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-foreground/80">
             La cartera muestra ganancia en ARS (
-            <span className="text-emerald-400 font-mono">{formatARS(pnlARS)}</span>) pero
+            <span className="text-success font-mono">{formatARS(pnlARS)}</span>) pero
             pérdida en USD (
-            <span className="text-red-400 font-mono">{formatUSD(pnlUSD)}</span>).
+            <span className="text-destructive font-mono">{formatUSD(pnlUSD)}</span>).
           </p>
-          <p className="mt-2 text-sm text-slate-400">
-            <span className="font-mono text-amber-300">{formatARS(fxGain)}</span> de la ganancia
+          <p className="mt-2 text-sm text-muted-foreground">
+            <span className="font-mono text-amber-600">{formatARS(fxGain)}</span> de la ganancia
             en pesos se debe a la devaluación del peso, no a la suba de los activos.
           </p>
         </div>

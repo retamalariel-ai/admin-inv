@@ -7,11 +7,11 @@
 @theme inline {
   --color-background:                  var(--background);
   --color-foreground:                  var(--foreground);
-  /* Fuentes: Inter (UI) + JetBrains Mono (números financieros) */
-  --font-sans:                         var(--font-inter);
+  /* Fuentes: Roboto (body) + Poppins (headings) + JetBrains Mono (números) */
+  --font-sans:                         var(--font-roboto);
   --font-mono:                         var(--font-jetbrains-mono);
-  --font-heading:                      var(--font-inter);
-  /* shadcn tokens — no tocar */
+  --font-heading:                      var(--font-poppins);
+  /* shadcn tokens */
   --color-sidebar-ring:                var(--sidebar-ring);
   --color-sidebar-border:              var(--sidebar-border);
   --color-sidebar-accent-foreground:   var(--sidebar-accent-foreground);
@@ -41,109 +41,118 @@
   --color-popover:                     var(--popover);
   --color-card-foreground:             var(--card-foreground);
   --color-card:                        var(--card);
-  --radius-sm:                         calc(var(--radius) * 0.6);
-  --radius-md:                         calc(var(--radius) * 0.8);
-  --radius-lg:                         var(--radius);
-  --radius-xl:                         calc(var(--radius) * 1.4);
-  --radius-2xl:                        calc(var(--radius) * 1.8);
-  --radius-3xl:                        calc(var(--radius) * 2.2);
-  --radius-4xl:                        calc(var(--radius) * 2.6);
-}
-
-/* ─── Modo Claro (no se usa en producción — app es 100% dark) ─── */
-:root {
-  --background:            oklch(1 0 0);
-  --foreground:            oklch(0.145 0 0);
-  --card:                  oklch(1 0 0);
-  --card-foreground:       oklch(0.145 0 0);
-  --popover:               oklch(1 0 0);
-  --popover-foreground:    oklch(0.145 0 0);
-  --primary:               oklch(0.205 0 0);
-  --primary-foreground:    oklch(0.985 0 0);
-  --secondary:             oklch(0.97 0 0);
-  --secondary-foreground:  oklch(0.205 0 0);
-  --muted:                 oklch(0.97 0 0);
-  --muted-foreground:      oklch(0.556 0 0);
-  --accent:                oklch(0.97 0 0);
-  --accent-foreground:     oklch(0.205 0 0);
-  --destructive:           oklch(0.577 0.245 27.325);
-  --border:                oklch(0.922 0 0);
-  --input:                 oklch(0.922 0 0);
-  --ring:                  oklch(0.708 0 0);
-  --radius:                0.5rem;
-  --sidebar:               oklch(0.985 0 0);
-  --sidebar-foreground:    oklch(0.145 0 0);
-  --sidebar-primary:       oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent:        oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border:        oklch(0.922 0 0);
-  --sidebar-ring:          oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* Tokens de estado */
+  --color-success:                     var(--success);
+  --color-success-foreground:          var(--success-foreground);
+  /* Radios absolutos — spec de diseño */
+  --radius:                            12px;
+  --radius-sm:                         9px;
+  --radius-md:                         12px;
+  --radius-lg:                         18px;
+  --radius-xl:                         26px;
+  --radius-2xl:                        32px;
+  --radius-3xl:                        40px;
+  --radius-4xl:                        48px;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   MODO OSCURO — PALETA NAVY INSTITUCIONAL
-   ---------------------------------------------------------------
-   Arquitectura de capas (de más oscuro a más claro):
-     Sidebar  →  Background  →  Card  →  Secondary  →  Accent
-     0.08        0.10           0.14      0.19          0.21
-
-   Cromaticidad 0.016–0.025 + hue 255 = navy sutil, no gris plano.
-   Acento primario: esmeralda institucional oklch(0.78 0.130 168).
+   PALETA INSTITUCIONAL — LIGHT
+   Sidebar navy #05297A · Acento #2465F6 · Success #18B488 · Danger #E93030
+   Sidebar permanece oscuro (navy) independientemente del modo del sistema.
 ═══════════════════════════════════════════════════════════════════ */
-.dark {
+:root {
   /* ── Fondos ─────────────────────────────────────────────────── */
-  --background:         oklch(0.10 0.018 255);   /* Cuerpo principal */
-  --card:               oklch(0.14 0.020 255);   /* Tarjetas y paneles */
-  --popover:            oklch(0.17 0.022 255);   /* Dropdowns */
-  --popover-foreground: oklch(0.93 0.008 255);
-  --secondary:          oklch(0.19 0.022 255);   /* Superficies elevadas */
-  --secondary-foreground: oklch(0.88 0.010 255);
-  --muted:              oklch(0.18 0.020 255);   /* Fondos de badges */
-  --accent:             oklch(0.21 0.025 255);   /* Hover states */
-  --accent-foreground:  oklch(0.93 0.008 255);
+  --background:         oklch(1 0 0);            /* #FFFFFF */
+  --card:               oklch(0.98 0.004 255);   /* #F9FAFC */
+  --popover:            oklch(1 0 0);
+  --secondary:          oklch(0.96 0.004 255);   /* #F3F4F6 */
+  --muted:              oklch(0.96 0.004 255);
 
   /* ── Texto — jerarquía de 3 niveles ────────────────────────── */
-  --foreground:         oklch(0.94 0.008 255);   /* Títulos y valores */
-  --card-foreground:    oklch(0.94 0.008 255);
-  --muted-foreground:   oklch(0.56 0.028 255);   /* Labels y metadatos */
+  --foreground:         oklch(0.12 0.010 265);   /* ~#111114 */
+  --card-foreground:    oklch(0.12 0.010 265);
+  --popover-foreground: oklch(0.12 0.010 265);
+  --secondary-foreground: oklch(0.15 0.010 265);
+  --muted-foreground:   oklch(0.50 0.015 255);   /* ~#6B7280 */
+  --accent-foreground:  oklch(1 0 0);
 
-  /* ── Acento primario — esmeralda institucional ──────────────── */
-  --primary:            oklch(0.78 0.130 168);   /* Emerald suave */
-  --primary-foreground: oklch(0.09 0.015 168);   /* Texto sobre verde */
+  /* ── Primario — Navy #05297A ─────────────────────────────────── */
+  --primary:            oklch(0.26 0.14 267);    /* #05297A */
+  --primary-foreground: oklch(1 0 0);
 
-  /* ── Destructivo — rojo cálido, no agresivo ─────────────────── */
-  --destructive:        oklch(0.65 0.180 25);
+  /* ── Acento — Electric blue #2465F6 ─────────────────────────── */
+  --accent:             oklch(0.52 0.21 262);    /* #2465F6 */
 
-  /* ── Bordes ultra-sutiles ───────────────────────────────────── */
-  --border:             oklch(1 0 0 / 7%);       /* Separadores generales */
-  --input:              oklch(1 0 0 / 10%);
-  --ring:               oklch(0.78 0.130 168 / 45%); /* Focus ring = emerald */
+  /* ── Destructivo — #E93030 ───────────────────────────────────── */
+  --destructive:        oklch(0.54 0.22 28);     /* #E93030 */
 
-  /* ── Sidebar — capa más oscura del shell ────────────────────── */
-  --sidebar:            oklch(0.08 0.016 255);
-  --sidebar-foreground: oklch(0.75 0.020 255);
-  --sidebar-primary:    oklch(0.78 0.130 168);   /* Ítem activo = emerald */
-  --sidebar-primary-foreground: oklch(0.09 0.015 168);
-  --sidebar-accent:     oklch(0.15 0.022 255);   /* Hover en sidebar */
-  --sidebar-accent-foreground: oklch(0.93 0.008 255);
-  --sidebar-border:     oklch(1 0 0 / 5%);
-  --sidebar-ring:       oklch(0.78 0.130 168);
+  /* ── Success — #18B488 ───────────────────────────────────────── */
+  --success:            oklch(0.66 0.14 162);    /* #18B488 */
+  --success-foreground: oklch(1 0 0);
 
-  /* ── Chart — paleta financiera coherente ───────────────────── */
-  --chart-1:            oklch(0.78 0.130 168);   /* Esmeralda — RF/Bonos */
-  --chart-2:            oklch(0.68 0.120 224);   /* Azul — RV/Acciones */
-  --chart-3:            oklch(0.75 0.090 285);   /* Violeta — FCI */
-  --chart-4:            oklch(0.80 0.115 70);    /* Ámbar — Crypto */
-  --chart-5:            oklch(0.62 0.170 25);    /* Rojo — Cash */
+  /* ── Bordes ─────────────────────────────────────────────────── */
+  --border:             oklch(0 0 0 / 8%);
+  --input:              oklch(0 0 0 / 10%);
+  --ring:               oklch(0.52 0.21 262);    /* accent */
+
+  --radius:             12px;
+
+  /* ── Sidebar — navy oscuro fijo ──────────────────────────────── */
+  --sidebar:            oklch(0.26 0.14 267);    /* #05297A */
+  --sidebar-foreground: oklch(0.88 0.020 255);   /* blanco 85% */
+  --sidebar-primary:    oklch(0.86 0.17 89);     /* #FFD400 gold para item activo */
+  --sidebar-primary-foreground: oklch(0.15 0.05 265);
+  --sidebar-accent:     oklch(1 0 0 / 10%);      /* hover blanco 10% */
+  --sidebar-accent-foreground: oklch(0.96 0.010 255);
+  --sidebar-border:     oklch(1 0 0 / 12%);
+  --sidebar-ring:       oklch(0.52 0.21 262);
+
+  /* ── Chart ───────────────────────────────────────────────────── */
+  --chart-1:            oklch(0.66 0.14 162);    /* success green */
+  --chart-2:            oklch(0.52 0.21 262);    /* accent blue */
+  --chart-3:            oklch(0.55 0.17 285);    /* purple */
+  --chart-4:            oklch(0.80 0.17 89);     /* amber */
+  --chart-5:            oklch(0.54 0.22 28);     /* danger red */
 }
 
-/* ─── Base styles ────────────────────────────────────────────── */
+/* ── Modo oscuro (opt-in vía clase .dark) ────────────────────── */
+.dark {
+  --background:         oklch(0.10 0.018 255);
+  --card:               oklch(0.14 0.020 255);
+  --popover:            oklch(0.17 0.022 255);
+  --popover-foreground: oklch(0.93 0.008 255);
+  --secondary:          oklch(0.19 0.022 255);
+  --secondary-foreground: oklch(0.88 0.010 255);
+  --muted:              oklch(0.18 0.020 255);
+  --accent:             oklch(0.21 0.025 255);
+  --accent-foreground:  oklch(0.93 0.008 255);
+  --foreground:         oklch(0.94 0.008 255);
+  --card-foreground:    oklch(0.94 0.008 255);
+  --muted-foreground:   oklch(0.56 0.028 255);
+  --primary:            oklch(0.26 0.14 267);
+  --primary-foreground: oklch(1 0 0);
+  --destructive:        oklch(0.65 0.180 25);
+  --success:            oklch(0.66 0.14 162);
+  --success-foreground: oklch(0.10 0.010 265);
+  --border:             oklch(1 0 0 / 7%);
+  --input:              oklch(1 0 0 / 10%);
+  --ring:               oklch(0.52 0.21 262 / 45%);
+  --sidebar:            oklch(0.08 0.016 255);
+  --sidebar-foreground: oklch(0.75 0.020 255);
+  --sidebar-primary:    oklch(0.86 0.17 89);
+  --sidebar-primary-foreground: oklch(0.09 0.015 168);
+  --sidebar-accent:     oklch(0.15 0.022 255);
+  --sidebar-accent-foreground: oklch(0.93 0.008 255);
+  --sidebar-border:     oklch(1 0 0 / 5%);
+  --sidebar-ring:       oklch(0.52 0.21 262);
+  --chart-1:            oklch(0.66 0.14 162);
+  --chart-2:            oklch(0.68 0.120 224);
+  --chart-3:            oklch(0.75 0.090 285);
+  --chart-4:            oklch(0.80 0.115 70);
+  --chart-5:            oklch(0.62 0.170 25);
+}
+
+/* ─── Base styles ─────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border outline-ring/50;

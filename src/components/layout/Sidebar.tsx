@@ -75,7 +75,7 @@ export default function Sidebar({ userEmail }: SidebarProps) {
           height={36}
           className="rounded-full shrink-0"
         />
-        <span className="text-[13px] font-semibold tracking-wide text-primary leading-tight">
+        <span className="text-[13px] font-semibold tracking-wide text-sidebar-foreground leading-tight">
           CFO Inversiones
         </span>
       </div>

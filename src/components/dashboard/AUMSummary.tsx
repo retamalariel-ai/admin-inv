@@ -40,12 +40,12 @@ function KpiCard({
   const valueColor =
     valuePositive === null || valuePositive === undefined
       ? 'text-foreground'
-      : valuePositive ? 'text-emerald-400' : 'text-red-400'
+      : valuePositive ? 'text-success' : 'text-destructive'
 
   const subColor =
     valueSubPositive === null || valueSubPositive === undefined
       ? 'text-muted-foreground'
-      : valueSubPositive ? 'text-emerald-500' : 'text-red-400'
+      : valueSubPositive ? 'text-success' : 'text-destructive'
 
   return (
     <div
@@ -139,12 +139,12 @@ export default function AUMSummary({
 
       {/* Aviso de divergencia ARS vs USD */}
       {hasDivergence && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/8 px-5 py-3 text-sm text-slate-300">
-          <span className="text-amber-400 font-semibold">⚠ Efecto devaluación:&nbsp;</span>
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/8 px-5 py-3 text-sm text-foreground/80">
+          <span className="text-amber-600 font-semibold">⚠ Efecto devaluación:&nbsp;</span>
           La cartera muestra ganancia en ARS (
-          <span className="font-mono text-emerald-400">{formatARS(pnlARS)}</span>) pero
+          <span className="font-mono text-success">{formatARS(pnlARS)}</span>) pero
           pérdida en USD (
-          <span className="font-mono text-red-400">{formatUSD(pnlUSD)}</span>).
+          <span className="font-mono text-destructive">{formatUSD(pnlUSD)}</span>).
           Parte de la ganancia en pesos se debe a la devaluación del peso.
         </div>
       )}

@@ -24,8 +24,8 @@ export default function NavItem({ href, icon: Icon, label, indent }: NavItemProp
         ${indent ? 'ml-4 py-2 px-3' : 'px-3 py-2.5'}
         ${isActive
           ? `
-              bg-primary/10 text-primary
-              border-l-2 border-primary pl-[10px]
+              bg-sidebar-accent text-sidebar-accent-foreground
+              border-l-2 border-sidebar-primary pl-[10px]
             `
           : `
               text-sidebar-foreground/55

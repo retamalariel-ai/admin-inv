@@ -53,28 +53,28 @@ const ASSET_LABELS: Record<AssetType, string> = {
 }
 
 const ASSET_COLOR: Partial<Record<AssetType, string>> = {
-  ACCION_LOCAL:        'bg-blue-900/60 text-blue-300',
-  CEDEAR:              'bg-indigo-900/60 text-indigo-300',
-  BONO_SOBERANO:       'bg-emerald-900/60 text-emerald-300',
-  BONO_SUBSOBERANO:    'bg-teal-900/60 text-teal-300',
-  ON:                  'bg-cyan-900/60 text-cyan-300',
-  LETES:               'bg-emerald-900/50 text-emerald-400',
-  LECAP:               'bg-emerald-800/50 text-emerald-300',
-  FCI_MONEY_MARKET:    'bg-slate-700 text-slate-300',
-  FCI_RENTA_FIJA:      'bg-slate-700 text-slate-300',
-  FCI_RENTA_VARIABLE:  'bg-blue-900/50 text-blue-300',
-  FCI_RENTA_MIXTA:     'bg-blue-800/50 text-blue-400',
-  CRYPTO_SPOT:         'bg-amber-900/60 text-amber-300',
-  CRYPTO_STABLECOIN:   'bg-amber-800/50 text-amber-400',
-  CRYPTO_EARN:         'bg-orange-900/60 text-orange-300',
-  CRYPTO_DEFI_LP:      'bg-purple-900/60 text-purple-300',
-  CRYPTO_DEFI_STAKE:   'bg-purple-800/60 text-purple-300',
-  CRYPTO_DEFI_LENDING: 'bg-violet-900/60 text-violet-300',
-  CASH_ARS:            'bg-slate-700 text-slate-400',
-  CASH_USD_MEP:        'bg-slate-700 text-slate-400',
-  CASH_USD_CCL:        'bg-slate-700 text-slate-400',
-  CASH_CRYPTO_STABLE:  'bg-slate-700 text-slate-400',
-  CASH_CRYPTO_NATIVE:  'bg-slate-700 text-slate-400',
+  ACCION_LOCAL:        'bg-blue-100 text-blue-700',
+  CEDEAR:              'bg-indigo-100 text-indigo-700',
+  BONO_SOBERANO:       'bg-emerald-100 text-emerald-700',
+  BONO_SUBSOBERANO:    'bg-teal-100 text-teal-700',
+  ON:                  'bg-cyan-100 text-cyan-700',
+  LETES:               'bg-emerald-100 text-emerald-600',
+  LECAP:               'bg-green-50 text-green-600',
+  FCI_MONEY_MARKET:    'bg-slate-100 text-slate-600',
+  FCI_RENTA_FIJA:      'bg-slate-100 text-slate-600',
+  FCI_RENTA_VARIABLE:  'bg-blue-100 text-blue-600',
+  FCI_RENTA_MIXTA:     'bg-blue-50 text-blue-500',
+  CRYPTO_SPOT:         'bg-amber-100 text-amber-700',
+  CRYPTO_STABLECOIN:   'bg-amber-50 text-amber-600',
+  CRYPTO_EARN:         'bg-orange-100 text-orange-700',
+  CRYPTO_DEFI_LP:      'bg-purple-100 text-purple-700',
+  CRYPTO_DEFI_STAKE:   'bg-purple-100 text-purple-700',
+  CRYPTO_DEFI_LENDING: 'bg-violet-100 text-violet-700',
+  CASH_ARS:            'bg-slate-100 text-slate-500',
+  CASH_USD_MEP:        'bg-slate-100 text-slate-500',
+  CASH_USD_CCL:        'bg-slate-100 text-slate-500',
+  CASH_CRYPTO_STABLE:  'bg-slate-100 text-slate-500',
+  CASH_CRYPTO_NATIVE:  'bg-slate-100 text-slate-500',
 }
 
 const CRYPTO_TYPES: AssetType[] = [
@@ -129,13 +129,13 @@ function getPnLContext(pos: Position): { msg: string; color: string } | null {
   const pnlUSD = pos.unrealized_pnl_usd ?? 0
   if (Math.abs(pnlARS) < 0.01 && Math.abs(pnlUSD) < 0.01) return null
   if (pnlARS > 0 && pnlUSD < 0)
-    return { msg: '⚠ Ganancia en ARS por devaluación. En USD: pérdida.', color: 'text-amber-400' }
+    return { msg: '⚠ Ganancia en ARS por devaluación. En USD: pérdida.', color: 'text-amber-500' }
   if (pnlARS > 0 && pnlUSD > 0)
-    return { msg: '✓ Ganancia real en ARS y USD', color: 'text-emerald-500' }
+    return { msg: '✓ Ganancia real en ARS y USD', color: 'text-success' }
   if (pnlARS < 0 && pnlUSD < 0)
-    return { msg: '✗ Pérdida en ARS y USD', color: 'text-red-400' }
+    return { msg: '✗ Pérdida en ARS y USD', color: 'text-destructive' }
   if (pnlARS < 0 && pnlUSD > 0)
-    return { msg: '⚠ Pérdida en ARS por apreciación. En USD: ganancia.', color: 'text-amber-400' }
+    return { msg: '⚠ Pérdida en ARS por apreciación. En USD: ganancia.', color: 'text-amber-500' }
   return null
 }
 
@@ -150,12 +150,12 @@ Para saber si realmente ganaste, mirá el P&L USD.`
 function InfoTooltip({ text }: { text: string }) {
   return (
     <span className="relative group inline-flex items-center">
-      <Info className="h-3 w-3 text-slate-500 cursor-help ml-1 flex-shrink-0" />
+      <Info className="h-3 w-3 text-muted-foreground cursor-help ml-1 flex-shrink-0" />
       <span className="
         absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-2.5 rounded-lg
-        bg-slate-700 text-slate-200 text-xs leading-relaxed font-normal normal-case tracking-normal
+        bg-popover text-popover-foreground text-xs leading-relaxed font-normal normal-case tracking-normal
         opacity-0 group-hover:opacity-100 pointer-events-none z-50
-        whitespace-pre-wrap shadow-xl border border-slate-600
+        whitespace-pre-wrap shadow-xl border border-border
         transition-opacity duration-150
       ">
         {text}
@@ -273,8 +273,8 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
             variant={activeGroup === null ? 'default' : 'outline'}
             onClick={() => setActiveGroup(null)}
             className={activeGroup === null
-              ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-              : 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}
+              ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+              : 'border-border text-muted-foreground hover:text-foreground hover:bg-accent/10'}
           >
             Todos ({positions.length})
           </Button>
@@ -291,8 +291,8 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                 variant={active ? 'default' : 'outline'}
                 onClick={() => setActiveGroup(active ? null : g.label)}
                 className={active
-                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                  : 'border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700'}
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:bg-accent/10'}
               >
                 {g.label} ({count})
               </Button>
@@ -302,15 +302,15 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
 
         {/* Toggle de vista P&L */}
         <div className="flex items-center gap-1.5">
-          <span className="text-xs text-slate-500">P&L:</span>
+          <span className="text-xs text-muted-foreground">P&L:</span>
           {PNL_VIEWS.map(v => (
             <Button
               key={v}
               size="sm"
               onClick={() => setPnlView(v)}
               className={pnlView === v
-                ? 'h-7 text-xs px-2.5 bg-emerald-700 hover:bg-emerald-600 text-white'
-                : 'h-7 text-xs px-2.5 border border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700 bg-transparent'
+                ? 'h-7 text-xs px-2.5 bg-primary/90 hover:bg-primary text-primary-foreground'
+                : 'h-7 text-xs px-2.5 border border-border text-muted-foreground hover:text-foreground hover:bg-accent/10 bg-transparent'
               }
             >
               {v === 'DETALLE' ? 'Detalle' : v === 'HOY' ? 'Hoy 1D' : v === 'ARS' ? 'Total ARS' : v}
@@ -320,67 +320,67 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
       </div>
 
       {/* Tabla */}
-      <div className="rounded-xl border border-slate-700 overflow-hidden">
+      <div className="rounded-lg border border-border overflow-hidden">
         <Table>
-          <TableHeader className="bg-slate-800/80">
-            <TableRow className="border-slate-700 hover:bg-transparent">
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Ticker</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Nombre</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider">Tipo</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Cantidad</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'PPP USD' : 'PPP ARS'}</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Precio actual</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">{isUsdBase ? 'Valor USD' : 'Valor ARS'}</TableHead>
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">% Cartera</TableHead>
+          <TableHeader className="bg-muted/50">
+            <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Ticker</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Nombre</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Tipo</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">Cantidad</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">{isUsdBase ? 'PPP USD' : 'PPP ARS'}</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">Precio actual</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">{isUsdBase ? 'Valor USD' : 'Valor ARS'}</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">% Cartera</TableHead>
 
               {pnlView === 'ARS' && (
                 <>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L Total</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">P&L Total</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">%</TableHead>
                 </>
               )}
               {pnlView === 'HOY' && (
                 <>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">
                     <span className="inline-flex items-center justify-end">
                       Hoy (1D)
                       <InfoTooltip text={HOY_TOOLTIP} />
                     </span>
                   </TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">%</TableHead>
                 </>
               )}
               {pnlView === 'USD' && (
                 <>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">P&L USD</TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">%</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">P&L USD</TableHead>
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">%</TableHead>
                 </>
               )}
               {pnlView === 'DETALLE' && (
                 <>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">
                     <span className="inline-flex items-center justify-end">
                       P&L ARS
                       <InfoTooltip text={DETALLE_TOOLTIP} />
                     </span>
                   </TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right whitespace-nowrap">
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right whitespace-nowrap">
                     Del cual: FX
                   </TableHead>
-                  <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right whitespace-nowrap">
+                  <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right whitespace-nowrap">
                     Del cual: Precio
                   </TableHead>
                 </>
               )}
 
-              <TableHead className="text-slate-400 text-xs uppercase tracking-wider text-right">Break-even</TableHead>
+              <TableHead className="text-muted-foreground text-xs uppercase tracking-wider text-right">Break-even</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={colSpan} className="text-center text-slate-500 py-10">
+                <TableCell colSpan={colSpan} className="text-center text-muted-foreground py-10">
                   Sin posiciones
                 </TableCell>
               </TableRow>
@@ -403,12 +403,12 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                     const dailyPnl    = pos.daily_pnl_ars    != null ? new Decimal(pos.daily_pnl_ars)    : null
                     const dailyChgPct = pos.daily_change_pct != null ? new Decimal(pos.daily_change_pct) : null
 
-                    const arsColor   = pnlARS.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                    const usdColor   = pnlUSD.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                    const fxColor    = fxGain.gte(0) ? 'text-amber-400' : 'text-slate-400'
-                    const priceColor = priceGain.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                    const hoyColor   = dailyPnl == null ? 'text-slate-500' : dailyPnl.gte(0) ? 'text-emerald-400' : 'text-red-400'
-                    const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-700 text-slate-400'
+                    const arsColor   = pnlARS.gte(0) ? 'text-success' : 'text-destructive'
+                    const usdColor   = pnlUSD.gte(0) ? 'text-success' : 'text-destructive'
+                    const fxColor    = fxGain.gte(0) ? 'text-amber-500' : 'text-muted-foreground'
+                    const priceColor = priceGain.gte(0) ? 'text-success' : 'text-destructive'
+                    const hoyColor   = dailyPnl == null ? 'text-muted-foreground' : dailyPnl.gte(0) ? 'text-success' : 'text-destructive'
+                    const badgeClass = ASSET_COLOR[pos.asset_type as AssetType] ?? 'bg-slate-100 text-slate-500'
                     const be         = formatBreakEven(pos)
                     const pctCartera = totalPortfolioAUM > 0 ? (pos.market_value_ars ?? 0) / totalPortfolioAUM * 100 : 0
                     const barCartera = maxPct > 0 ? pctCartera / maxPct * 100 : 0
@@ -416,12 +416,12 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                     return (
                       <TableRow
                         key={`${pos.asset_id}-${gi}-${i}`}
-                        className="border-slate-700/50 hover:bg-slate-800/60"
+                        className="border-border/50 hover:bg-accent/10"
                       >
-                        <TableCell className="font-mono font-semibold text-white">
+                        <TableCell className="font-mono font-semibold text-foreground">
                           {pos.ticker ?? '—'}
                         </TableCell>
-                        <TableCell className="text-slate-300 max-w-[180px] truncate" title={pos.asset_name ?? undefined}>
+                        <TableCell className="text-foreground/80 max-w-[180px] truncate" title={pos.asset_name ?? undefined}>
                           {pos.asset_name ?? '—'}
                         </TableCell>
                         <TableCell>
@@ -429,26 +429,26 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                             {pos.asset_type ? ASSET_LABELS[pos.asset_type as AssetType] : '—'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-mono text-slate-200">
+                        <TableCell className="text-right font-mono text-foreground">
                           {formatQty(pos)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-slate-400 text-sm">
+                        <TableCell className="text-right font-mono text-muted-foreground text-sm">
                           {isUsdBase || isFciUsd(pos)
                             ? (pos.ppp_usd != null ? formatUSD(new Decimal(pos.ppp_usd)) : '—')
                             : formatPPP(pos)}
                         </TableCell>
-                        <TableCell className="text-right font-mono text-slate-200">
+                        <TableCell className="text-right font-mono text-foreground">
                           {formatPrice(pos)}
                         </TableCell>
-                        <TableCell className="text-right font-mono font-semibold text-white">
+                        <TableCell className="text-right font-mono font-semibold text-foreground">
                           {isUsdBase
                             ? (pos.market_value_usd != null ? formatUSD(new Decimal(pos.market_value_usd)) : '—')
                             : (pos.market_value_ars != null ? formatARS(new Decimal(pos.market_value_ars)) : '—')}
                         </TableCell>
                         <TableCell className="text-right min-w-[68px]">
-                          <div className="font-mono text-slate-200 text-xs tabular-nums">{pctCartera.toFixed(1)}%</div>
-                          <div className="mt-0.5 h-0.5 w-full rounded-full bg-slate-700/60 overflow-hidden">
-                            <div className="h-full rounded-full bg-emerald-400/60 transition-all" style={{ width: `${barCartera}%` }} />
+                          <div className="font-mono text-foreground/80 text-xs tabular-nums">{pctCartera.toFixed(1)}%</div>
+                          <div className="mt-0.5 h-0.5 w-full rounded-full bg-border overflow-hidden">
+                            <div className="h-full rounded-full bg-success/60 transition-all" style={{ width: `${barCartera}%` }} />
                           </div>
                         </TableCell>
 
@@ -503,14 +503,14 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                               <div className={`font-mono text-xs ${fxColor}`}>
                                 {formatARS(fxGain)}
                               </div>
-                              <div className="text-[10px] text-slate-600">devaluación</div>
+                              <div className="text-[10px] text-muted-foreground/50">devaluación</div>
                             </TableCell>
                             {/* Ganancia de precio pura */}
                             <TableCell className="text-right">
                               <div className={`font-mono text-xs ${priceColor}`}>
                                 {formatARS(priceGain)}
                               </div>
-                              <div className="text-[10px] text-slate-600">precio real</div>
+                              <div className="text-[10px] text-muted-foreground/50">precio real</div>
                             </TableCell>
                           </>
                         )}
@@ -518,13 +518,13 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                         <TableCell className="text-right">
                           {be ? (
                             <div>
-                              <div className="font-mono text-slate-400 text-xs">{be.price}</div>
-                              <div className={`font-mono text-xs ${be.above ? 'text-emerald-400' : 'text-red-400'}`}>
+                              <div className="font-mono text-muted-foreground text-xs">{be.price}</div>
+                              <div className={`font-mono text-xs ${be.above ? 'text-success' : 'text-destructive'}`}>
                                 {be.above ? '▲ ' : '▼ '}{be.pct}
                               </div>
                             </div>
                           ) : (
-                            <span className="text-slate-600 text-xs">—</span>
+                            <span className="text-muted-foreground/40 text-xs">—</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -532,7 +532,7 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                             size="sm"
                             variant="outline"
                             onClick={() => openTxFor(pos)}
-                            className="text-xs border-slate-600 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                            className="text-xs border-border text-muted-foreground hover:text-foreground hover:bg-accent/10"
                           >
                             + Tx
                           </Button>
@@ -542,18 +542,18 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                   }),
                   <TableRow
                     key={`sub-${group.type ?? gi}`}
-                    className="bg-slate-800/40 border-t border-slate-600/60"
+                    className="bg-muted/30 border-t border-border/50"
                   >
-                    <TableCell colSpan={6} className="text-slate-400 text-[11px] py-2 pl-4 font-semibold uppercase tracking-wider">
+                    <TableCell colSpan={6} className="text-muted-foreground text-[11px] py-2 pl-4 font-semibold uppercase tracking-wider">
                       Total {group.label} · {group.positions.length} posición{group.positions.length !== 1 ? 'es' : ''}
                     </TableCell>
-                    <TableCell className="text-right font-mono text-xs font-semibold text-slate-300 py-2">
+                    <TableCell className="text-right font-mono text-xs font-semibold text-foreground/80 py-2">
                       {formatARS(new Decimal(groupValueARS))}
                     </TableCell>
                     <TableCell className="text-right py-2">
-                      <div className="font-mono text-xs text-slate-300 tabular-nums">{groupPct.toFixed(1)}%</div>
-                      <div className="mt-0.5 h-0.5 w-full rounded-full bg-slate-700/60 overflow-hidden">
-                        <div className="h-full rounded-full bg-emerald-400/40 transition-all" style={{ width: `${maxPct > 0 ? (groupPct / maxPct) * 100 : 0}%` }} />
+                      <div className="font-mono text-xs text-foreground/80 tabular-nums">{groupPct.toFixed(1)}%</div>
+                      <div className="mt-0.5 h-0.5 w-full rounded-full bg-border overflow-hidden">
+                        <div className="h-full rounded-full bg-success/40 transition-all" style={{ width: `${maxPct > 0 ? (groupPct / maxPct) * 100 : 0}%` }} />
                       </div>
                     </TableCell>
                     <TableCell colSpan={rightSpan} />
