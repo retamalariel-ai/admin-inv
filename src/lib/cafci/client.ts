@@ -24,7 +24,15 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
   const buffer  = await res.arrayBuffer()
   const csvStr  = new TextDecoder('latin1').decode(buffer)
 
-  return parseCSV(csvStr)
+  console.log('[cafci] content-type:', res.headers.get('content-type'))
+  console.log('[cafci] primeros 200 chars:', csvStr.slice(0, 200))
+
+  const result = parseCSV(csvStr)
+
+  console.log('[cafci] total líneas parseadas:', result.size)
+  console.log('[cafci] primeras 3 entradas:', [...result.entries()].slice(0, 3))
+
+  return result
 }
 
 // ── Parser ─────────────────────────────────────────────────────────────────
