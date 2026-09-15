@@ -74,6 +74,10 @@ export async function POST() {
     return Response.json({ success: false, error: 'No quotes matched', notFound })
   }
 
+  console.log('[fci/route] inserts:', JSON.stringify(
+    inserts.map(i => ({ asset_id: i.asset_id, price: i.price, type: typeof i.price }))
+  ))
+
   const { error: upsertErr } = await supabase
     .from('price_quotes')
     .upsert(inserts, {
