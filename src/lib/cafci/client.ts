@@ -43,6 +43,8 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
 
   const map = new Map<number, CAFCIQuote>()
 
+  let diagLogged = false
+
   for (const row of rows) {
     const r = row as unknown[]
 
@@ -50,12 +52,17 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
     const claseId = parseInt(String(r[20] ?? ''), 10)
     if (isNaN(claseId) || claseId <= 0) continue
 
-    const vcpRaw    = String(r[5] ?? '')
-    const vcpAntRaw = String(r[6] ?? '')
+    // Log de diagnóstico en la primera fila con claseId válido (fondo Cocos u otro)
+    if (!diagLogged) {
+      console.log('[cafci] fila muestra:', r[0], '| vcp raw:', r[5], '| tipo:', typeof r[5])
+      diagLogged = true
+    }
 
-    // SheetJS con raw:false puede devolver número directo o string con coma decimal
-    const vcp         = parseNum(vcpRaw)
-    const vcpAnterior = parseNum(vcpAntRaw)
+    // SheetJS con raw:false puede devolver el número ya parseado (number)
+    // o un string en formato argentino "1.090,467". Detectar el tipo evita
+    // que replace(/\./g, '') destruya el punto decimal de un JS number→string.
+    const vcp         = toNum(r[5])
+    const vcpAnterior = toNum(r[6])
 
     if (isNaN(vcp) || vcp <= 0) continue
 
@@ -79,8 +86,11 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
   return map
 }
 
-// Soporta "1.234,56", "1234.56" y número directo de SheetJS
-function parseNum(raw: string): number {
-  const cleaned = raw.replace(/\./g, '').replace(',', '.')
-  return parseFloat(cleaned)
+// Si SheetJS ya devolvió un number, usarlo directamente.
+// Si es string en formato argentino ("1.090,467"), eliminar puntos de miles
+// y convertir coma decimal a punto antes de parseFloat.
+function toNum(val: unknown): number {
+  if (typeof val === 'number') return val
+  const s = String(val ?? '').trim()
+  return parseFloat(s.replace(/\./g, '').replace(',', '.'))
 }
