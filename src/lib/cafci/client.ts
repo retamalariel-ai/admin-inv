@@ -52,9 +52,11 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
     const claseId = parseInt(String(r[20] ?? ''), 10)
     if (isNaN(claseId) || claseId <= 0) continue
 
-    // Log de diagnóstico en la primera fila con claseId válido (fondo Cocos u otro)
-    if (!diagLogged) {
-      console.log('[cafci] fila muestra:', r[0], '| vcp raw:', r[5], '| tipo:', typeof r[5])
+    if (!diagLogged && claseId > 0) {
+      console.log('[cafci] primera fila con datos:', r[0])
+      console.log('[cafci] vcp raw:', r[5], '| tipo:', typeof r[5])
+      console.log('[cafci] vcp parseado por toNum:', toNum(r[5]))
+      console.log('[cafci] claseId:', claseId)
       diagLogged = true
     }
 
@@ -82,6 +84,9 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
   for (const id of [4447, 5424, 2517, 5496]) {
     console.log(`[cafci] id ${id}:`, map.get(id))
   }
+
+  const cocoEntry = map.get(4447)
+  console.log('[cafci] COCOAUSD (4447):', cocoEntry)
 
   return map
 }
