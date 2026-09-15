@@ -71,7 +71,7 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
     const moneda = String(r[1] ?? '').trim()
     // ARS FCIs: VCP expresado en pesos por cada MIL cuotapartes → dividir por 1000
     // USD FCIs: VCP expresado en dólares por cuotaparte → sin ajuste
-    const factor = moneda === 'USD' ? 1 : 1000
+    const factor = 1000
 
     map.set(claseId, {
       claseId,
