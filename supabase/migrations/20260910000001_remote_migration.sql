@@ -1,0 +1,2 @@
+-- Migration applied directly on remote database.
+-- Placeholder added locally to synchronize migration history.
