@@ -68,13 +68,18 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
 
     if (isNaN(vcp) || vcp <= 0) continue
 
+    const moneda = String(r[1] ?? '').trim()
+    // ARS FCIs: VCP expresado en pesos por cada MIL cuotapartes → dividir por 1000
+    // USD FCIs: VCP expresado en dólares por cuotaparte → sin ajuste
+    const factor = moneda === 'USD' ? 1 : 1000
+
     map.set(claseId, {
       claseId,
       nombre:      String(r[0] ?? '').trim(),
-      vcp,
-      vcpAnterior: isNaN(vcpAnterior) ? 0 : vcpAnterior,
+      vcp:         vcp / factor,
+      vcpAnterior: isNaN(vcpAnterior) ? 0 : vcpAnterior / factor,
       fecha:       String(r[4] ?? '').trim(),
-      moneda:      String(r[1] ?? '').trim(),
+      moneda,
     })
   }
 
