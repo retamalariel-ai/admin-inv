@@ -33,7 +33,7 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
   // Array de arrays, raw:false para que los números lleguen como string formateado
   const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
     header: 1,
-    raw:    false,
+    raw:    true,
     defval: '',
   })
 
@@ -54,7 +54,7 @@ export async function getCAFCIQuotes(): Promise<Map<number, CAFCIQuote>> {
 
     if (!diagLogged && claseId > 0) {
       console.log('[cafci] primera fila con datos:', r[0])
-      console.log('[cafci] vcp raw:', r[5], '| tipo:', typeof r[5])
+      console.log('[cafci] vcp raw:', JSON.stringify(r[5]), '| tipo:', typeof r[5])
       console.log('[cafci] vcp parseado por toNum:', toNum(r[5]))
       console.log('[cafci] claseId:', claseId)
       diagLogged = true
