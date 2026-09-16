@@ -1,11 +1,12 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ArrowLeftRight, Plus, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeftRight, Plus, Pencil, Trash2, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import OperacionCruzadaDialog from './OperacionCruzadaDialog'
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 export type TxRow = {
@@ -177,7 +178,10 @@ export default function TransaccionesDashboard({ initialTransactions, accounts, 
     return { ing, egr, net: ing - egr }
   }, [filtered])
 
-  // ── Modal ──────────────────────────────────────────────────────────────────
+  // ── Modal: operación cruzada ───────────────────────────────────────────────
+  const [showCruzada, setShowCruzada] = useState(false)
+
+  // ── Modal: transacción ─────────────────────────────────────────────────────
   const [open,    setOpen]    = useState(false)
   const [editTx,  setEditTx]  = useState<TxRow | null>(null)
   const [form,    setForm]    = useState(EMPTY_FORM)
@@ -308,9 +312,19 @@ export default function TransaccionesDashboard({ initialTransactions, accounts, 
             {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} · {transactions.length} total
           </p>
         </div>
-        <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={openNew}>
-          <Plus className="h-4 w-4" /> Nueva
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2 border-violet-500/50 text-violet-400 hover:bg-violet-600/20 hover:text-violet-300"
+            onClick={() => setShowCruzada(true)}
+          >
+            <ArrowRightLeft className="h-4 w-4" /> Op. Cruzada
+          </Button>
+          <Button size="sm" className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={openNew}>
+            <Plus className="h-4 w-4" /> Nueva
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -484,6 +498,15 @@ export default function TransaccionesDashboard({ initialTransactions, accounts, 
           </div>
         </div>
       )}
+
+      {/* ── Modal: operación cruzada ───────────────────────────────────────── */}
+      <OperacionCruzadaDialog
+        open={showCruzada}
+        onClose={() => setShowCruzada(false)}
+        onSuccess={() => setShowCruzada(false)}
+        accounts={accounts}
+        categories={categories}
+      />
 
       {/* ── Modal: transacción ─────────────────────────────────────────────── */}
       <Dialog open={open} onOpenChange={setOpen}>
