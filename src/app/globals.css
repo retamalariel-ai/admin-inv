@@ -115,54 +115,58 @@
   --chart-5:            oklch(0.54 0.22 28);     /* danger red */
 }
 
-/* ── Modo oscuro — terminal financiero deep navy ─────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   TERMINAL FINANCIERO — DARK FORCED
+   #050a14 bg · #0d1526 card · #080e1d sidebar · #1a2744 border
+   #e8edf5 text · #6b7fa3 muted · #00d084 profit · #ff4757 loss
+═══════════════════════════════════════════════════════════════════ */
 .dark {
-  /* Fondos: deep navy-black como Bloomberg terminal */
-  --background:         oklch(0.082 0.026 255);   /* #06090f — casi negro azulado */
-  --card:               oklch(0.108 0.026 255);   /* #0d1220 — separado del fondo */
-  --popover:            oklch(0.130 0.028 255);
-  --popover-foreground: oklch(0.94 0.008 255);
-  --secondary:          oklch(0.155 0.028 255);
-  --secondary-foreground: oklch(0.90 0.010 255);
-  --muted:              oklch(0.145 0.024 255);
-  --accent:             oklch(0.190 0.028 255);
-  --accent-foreground:  oklch(0.94 0.008 255);
+  /* ── Fondos ─────────────────────────────────────────────────── */
+  --background:         #050a14;
+  --card:               #0d1526;
+  --popover:            #111e34;
+  --popover-foreground: #e8edf5;
+  --secondary:          #12203a;
+  --secondary-foreground: #c8d3e8;
+  --muted:              #0f1c31;
+  --accent:             #152240;
+  --accent-foreground:  #e8edf5;
 
-  /* Texto: ligeramente más brillante para legibilidad en terminal */
-  --foreground:         oklch(0.95 0.008 255);    /* casi blanco con tinte azul */
-  --card-foreground:    oklch(0.95 0.008 255);
-  --muted-foreground:   oklch(0.52 0.030 255);
+  /* ── Texto ───────────────────────────────────────────────────── */
+  --foreground:         #e8edf5;
+  --card-foreground:    #e8edf5;
+  --muted-foreground:   #6b7fa3;
 
-  /* Primario / acción */
-  --primary:            oklch(0.55 0.18 262);     /* accent blue activo */
-  --primary-foreground: oklch(1 0 0);
+  /* ── Interacción ─────────────────────────────────────────────── */
+  --primary:            #2979ff;
+  --primary-foreground: #ffffff;
 
-  /* Semánticos */
-  --destructive:        oklch(0.62 0.195 25);     /* rojo P&L negativo */
-  --success:            oklch(0.68 0.150 155);    /* verde P&L positivo */
-  --success-foreground: oklch(0.08 0.010 265);
+  /* ── Semánticos financieros ──────────────────────────────────── */
+  --destructive:        #ff4757;
+  --success:            #00d084;
+  --success-foreground: #021a0e;
 
-  /* Bordes: sutiles pero distinguibles */
-  --border:             oklch(1 0 0 / 8%);
-  --input:              oklch(1 0 0 / 11%);
-  --ring:               oklch(0.55 0.18 262 / 50%);
+  /* ── Bordes ─────────────────────────────────────────────────── */
+  --border:             #1a2744;
+  --input:              #1e2d54;
+  --ring:               #2979ff80;
 
-  /* Sidebar: más oscuro que el fondo */
-  --sidebar:            oklch(0.065 0.020 255);
-  --sidebar-foreground: oklch(0.72 0.022 255);
-  --sidebar-primary:    oklch(0.88 0.18 89);      /* gold para ítem activo */
-  --sidebar-primary-foreground: oklch(0.08 0.015 168);
-  --sidebar-accent:     oklch(0.145 0.026 255);
-  --sidebar-accent-foreground: oklch(0.94 0.008 255);
-  --sidebar-border:     oklch(1 0 0 / 6%);
-  --sidebar-ring:       oklch(0.55 0.18 262);
+  /* ── Sidebar ─────────────────────────────────────────────────── */
+  --sidebar:            #080e1d;
+  --sidebar-foreground: #8899bb;
+  --sidebar-primary:    #00d084;           /* green accent para ítem activo */
+  --sidebar-primary-foreground: #021a0e;
+  --sidebar-accent:     #0f1c31;
+  --sidebar-accent-foreground: #e8edf5;
+  --sidebar-border:     #111e34;
+  --sidebar-ring:       #2979ff;
 
-  /* Chart */
-  --chart-1:            oklch(0.68 0.150 155);    /* verde */
-  --chart-2:            oklch(0.65 0.140 224);    /* azul */
-  --chart-3:            oklch(0.72 0.095 285);    /* violeta */
-  --chart-4:            oklch(0.82 0.120 70);     /* amber */
-  --chart-5:            oklch(0.62 0.195 25);     /* rojo */
+  /* ── Chart ───────────────────────────────────────────────────── */
+  --chart-1:            #00d084;
+  --chart-2:            #2979ff;
+  --chart-3:            #a855f7;
+  --chart-4:            #f59e0b;
+  --chart-5:            #ff4757;
 }
 
 /* ─── Base styles ─────────────────────────────────────────────── */
@@ -173,12 +177,21 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "kern" 1, "liga" 1;
+    letter-spacing: -0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   html {
     @apply font-sans;
   }
+}
+
+/* .num — cifras monoespacio con alineación tabular perfecta */
+.num {
+  font-family: var(--font-mono), 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0;
 }
 
 /*

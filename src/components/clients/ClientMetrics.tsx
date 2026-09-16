@@ -27,16 +27,16 @@ function MetricCard({
 }: { label: string; value: string; sub?: string; positive?: boolean | null }) {
   const color =
     positive === null || positive === undefined
-      ? 'text-white'
+      ? 'text-foreground'
       : positive
-        ? 'text-emerald-400'
-        : 'text-red-400'
+        ? 'text-[#00d084]'
+        : 'text-[#ff4757]'
 
   return (
-    <div className="rounded-xl bg-slate-800 border border-slate-700 p-5">
-      <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
+    <div className="rounded bg-card border border-border px-4 py-3">
+      <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5">{label}</p>
+      <p className={`num text-xl font-semibold ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground/60 mt-0.5">{sub}</p>}
     </div>
   )
 }

@@ -64,7 +64,7 @@ export default function Sidebar({ userEmail }: SidebarProps) {
 
   return (
     <aside className="
-      fixed inset-y-0 left-0 w-60 flex flex-col
+      fixed inset-y-0 left-0 w-[200px] flex flex-col
       bg-sidebar border-r border-sidebar-border
     ">
       {/* Logo */}
@@ -72,20 +72,27 @@ export default function Sidebar({ userEmail }: SidebarProps) {
         <Image
           src="/logo-cfo.jpg"
           alt="CFO Tech Partners"
-          width={36}
-          height={36}
-          className="rounded-full shrink-0"
+          width={28}
+          height={28}
+          className="rounded shrink-0"
         />
-        <span className="text-[13px] font-semibold tracking-wide text-sidebar-foreground leading-tight">
+        <span className="text-[10px] font-bold tracking-widest uppercase text-sidebar-foreground leading-tight">
           CFO Inversiones
         </span>
       </div>
 
       {/* Navegación */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {NAV_ITEMS.map((item) => (
-          <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} indent={item.indent} />
-        ))}
+      <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+        {NAV_ITEMS.map((item, i) => {
+          const prev = NAV_ITEMS[i - 1]
+          const showDivider = i > 0 && !item.indent && !prev.indent
+          return (
+            <div key={item.href}>
+              {showDivider && <div className="h-px bg-sidebar-border mx-2 my-2" />}
+              <NavItem href={item.href} icon={item.icon} label={item.label} indent={item.indent} />
+            </div>
+          )
+        })}
       </nav>
 
       {/* Usuario + Logout */}

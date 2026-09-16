@@ -17,7 +17,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-background text-foreground">
       <Sidebar userEmail={user.email} />
 
-      <div className="ml-60 flex flex-col min-h-screen">
+      <div className="ml-[200px] flex flex-col min-h-screen">
         {/* Top bar — sticky, blurry, ultra-sutil */}
         <header className="
           sticky top-0 z-10

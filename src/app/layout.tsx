@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${roboto.variable} ${poppins.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`dark ${roboto.variable} ${poppins.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <QueryProvider>
