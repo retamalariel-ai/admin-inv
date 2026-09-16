@@ -4,6 +4,15 @@ import Decimal from 'decimal.js'
 import { formatARS, formatUSD } from '@/lib/utils/calculations'
 import type { EarnPosition } from '@/components/crypto/EarnTracker'
 
+interface PersonalAccount {
+  id: string
+  name: string
+  type: string
+  currency: string
+  current_balance: number | null
+  computed_balance: number
+}
+
 interface ClientMetricsProps {
   positions: {
     market_value_ars:          number | null
@@ -16,6 +25,8 @@ interface ClientMetricsProps {
     total_return_usd:          number | null
   }[]
   earnPositions: EarnPosition[]
+  personalAccounts: PersonalAccount[]
+  fxMep: number | null
 }
 
 function sum(arr: (number | null)[]): Decimal {
@@ -41,26 +52,54 @@ function MetricCard({
   )
 }
 
-export default function ClientMetrics({ positions }: ClientMetricsProps) {
+export default function ClientMetrics({ positions, earnPositions, personalAccounts, fxMep }: ClientMetricsProps) {
   // earn assets (USDT-EARN, SOL-STAKE, etc.) now valued in portfolio_valuation_unified
   // via underlying_asset_id — no separate earnPositions addition needed
-  const totalARS = sum(positions.map(p => p.market_value_ars))
-  const totalUSD = sum(positions.map(p => p.market_value_usd))
+  const spotEarnARS = sum(positions.map(p => p.market_value_ars))
+  const spotEarnUSD = sum(positions.map(p => p.market_value_usd))
 
   const pnlARS      = sum(positions.map(p => p.unrealized_pnl_ars))
   const totalRetARS = sum(positions.map(p => p.total_return_ars))
+
+  // earn USD para el breakdown (ya incluido en spotEarnUSD via portfolio_valuation_unified)
+  const earnUSD = earnPositions.reduce((s, ep) => s + ep.principal_amount_usd, 0)
+  const spotUSD = spotEarnUSD.minus(earnUSD).toNumber()
+
+  const personalUSD = personalAccounts.reduce((s, acc) => {
+    const bal = acc.computed_balance
+    if (bal <= 0) return s
+    if (acc.currency === 'USD') return s + bal
+    if (acc.currency === 'USDT') return s + bal
+    if (acc.currency === 'ARS' && fxMep) return s + bal / fxMep
+    return s
+  }, 0)
+
+  const personalARS = personalAccounts.reduce((s, acc) => {
+    const bal = acc.computed_balance
+    if (bal <= 0) return s
+    if (acc.currency === 'ARS') return s + bal
+    if (acc.currency === 'USD' && fxMep) return s + bal * fxMep
+    if (acc.currency === 'USDT' && fxMep) return s + bal * fxMep
+    return s
+  }, 0)
+
+  const grandTotalARS = spotEarnARS.plus(personalARS)
+  const grandTotalUSD = spotEarnUSD.plus(personalUSD)
+
+  const aumSubUSD = `spot ${formatUSD(spotUSD)} · earn ${formatUSD(earnUSD)} · personal ${formatUSD(personalUSD)}`
+  const aumSubARS = `spot+earn ${formatARS(spotEarnARS)} · personal ${formatARS(personalARS)}`
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <MetricCard
         label="AUM Total ARS"
-        value={formatARS(totalARS)}
-        sub="valuación a mercado"
+        value={formatARS(grandTotalARS)}
+        sub={aumSubARS}
       />
       <MetricCard
         label="AUM Total USD"
-        value={formatUSD(totalUSD)}
-        sub="dólares MEP"
+        value={formatUSD(grandTotalUSD)}
+        sub={aumSubUSD}
       />
       <MetricCard
         label="P&L No Realizado ARS"

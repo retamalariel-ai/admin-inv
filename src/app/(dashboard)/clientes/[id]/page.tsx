@@ -22,15 +22,24 @@ export default async function ClientePage(props: PageProps<'/clientes/[id]'>) {
     { data: client },
     { data: portfolios },
     { data: positions },
+    { data: fxData },
   ] = await Promise.all([
     supabase.from('clients').select('*').eq('id', id).single(),
     supabase.from('portfolios').select('*').eq('client_id', id).order('inception_date'),
     supabase.from('portfolio_valuation_unified').select('*').eq('client_id', id),
+    supabase
+      .from('fx_rates')
+      .select('rate_mep')
+      .order('rate_date', { ascending: false })
+      .order('rate_time', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .single(),
   ])
 
   if (!client) notFound()
 
   const allPositions = positions ?? []
+  const fxMep: number | null = fxData?.rate_mep ?? null
 
   // earn_positions filtradas por los portfolios del cliente
   const portfolioIds = (portfolios ?? []).map(p => p.id)
@@ -64,10 +73,38 @@ export default async function ClientePage(props: PageProps<'/clientes/[id]'>) {
     return { ...ep, principal_amount_usd: (ep.principal_amount as number) * price }
   })
 
+  // saldos de finanzas personales
+  const [{ data: personalAccounts }, { data: personalTxns }] = await Promise.all([
+    supabaseSvc
+      .from('personal_accounts')
+      .select('id, name, type, currency, current_balance')
+      .eq('is_active', true),
+    supabaseSvc
+      .from('personal_transactions')
+      .select('account_id, type, amount, currency'),
+  ])
+
+  const balanceMap = new Map<string, number>()
+  for (const txn of (personalTxns ?? [])) {
+    const prev = balanceMap.get(txn.account_id) ?? 0
+    if (txn.type === 'INGRESO') balanceMap.set(txn.account_id, prev + Number(txn.amount))
+    else if (txn.type === 'EGRESO') balanceMap.set(txn.account_id, prev - Number(txn.amount))
+  }
+
+  const accountsWithBalance = (personalAccounts ?? []).map((acc: any) => ({
+    ...acc,
+    computed_balance: balanceMap.get(acc.id) ?? Number(acc.current_balance) ?? 0,
+  }))
+
   return (
     <div className="space-y-8">
       <ClientHeader client={client} />
-      <ClientMetrics positions={allPositions} earnPositions={earnPositions} />
+      <ClientMetrics
+        positions={allPositions}
+        earnPositions={earnPositions}
+        personalAccounts={accountsWithBalance}
+        fxMep={fxMep}
+      />
       <PortfoliosList
         clientId={id}
         portfolios={portfolios ?? []}
