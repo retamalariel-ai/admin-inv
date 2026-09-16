@@ -86,8 +86,8 @@ export default function ClientMetrics({ positions, earnPositions, personalAccoun
   const grandTotalARS = spotEarnARS.plus(personalARS)
   const grandTotalUSD = spotEarnUSD.plus(personalUSD)
 
-  const aumSubUSD = `spot ${formatUSD(spotUSD)} · earn ${formatUSD(earnUSD)} · personal ${formatUSD(personalUSD)}`
-  const aumSubARS = `spot+earn ${formatARS(spotEarnARS)} · personal ${formatARS(personalARS)}`
+  const aumSubUSD = `spot ${formatUSD(new Decimal(spotUSD))} · earn ${formatUSD(new Decimal(earnUSD))} · personal ${formatUSD(new Decimal(personalUSD))}`
+  const aumSubARS = `spot+earn ${formatARS(spotEarnARS)} · personal ${formatARS(new Decimal(personalARS))}`
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
