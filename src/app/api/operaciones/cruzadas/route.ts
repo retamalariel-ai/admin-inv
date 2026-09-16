@@ -284,12 +284,26 @@ async function gastoNexoCard(db: ReturnType<typeof svc>, body: RequestBody) {
   })
 }
 
+// Cuentas personales que tienen un asset crypto equivalente en inversiones.
+// null en asset_id significa que solo genera el registro personal.
+const CUENTA_A_CRYPTO: Record<string, { asset_id: string | null; portfolio_id: string | null }> = {
+  '9176e305-afac-43db-9f40-87bdd4fe7da5': {  // Binance (USDT_WALLET)
+    asset_id:    '475a1f1f-4548-4bc5-9b97-ee7dda856e84',   // CASH_USDT_CEX
+    portfolio_id: 'ac7b4dab-a8ce-46a1-80d1-ef116712a24f',  // Binance Spot CEX
+  },
+  'c85fc3a7-641c-4ad0-a007-45acdda94735': {  // Efectivo USD
+    asset_id:    null,
+    portfolio_id: null,
+  },
+}
+
 // ── INGRESO_COMITENTE ─────────────────────────────────────────────────────────
-// Cobro de honorarios/factura → registra ingreso en cuenta comitente
-// Solo genera un registro personal (no hay movimiento de inversión)
+// Cobro de honorarios/factura → registra ingreso en cuenta personal.
+// Si la cuenta es una wallet crypto mapeada, genera también un DEPOSITO en investments.
 async function ingresoComitente(db: ReturnType<typeof svc>, body: RequestBody) {
   const { fecha, monto, moneda, descripcion, fx_rate_mep, categoria_id } = body
 
+  // 1. Registrar en finanzas personales
   const { data: persTx, error: persErr } = await db.from('personal_transactions').insert({
     account_id:  body.cuenta_id ?? CUENTA_COMITENTE_ID,
     category_id: categoria_id ?? null,
@@ -307,10 +321,38 @@ async function ingresoComitente(db: ReturnType<typeof svc>, body: RequestBody) {
     return NextResponse.json({ success: false, error: persErr.message }, { status: 500 })
   }
 
+  // 2. Si la cuenta tiene un asset crypto equivalente, generar DEPOSITO en investments
+  let investmentTxId: string | null = null
+  const cryptoMapping = body.cuenta_id ? CUENTA_A_CRYPTO[body.cuenta_id] : undefined
+
+  if (cryptoMapping?.asset_id && cryptoMapping?.portfolio_id) {
+    const { data: invTx, error: invErr } = await db.from('transactions').insert({
+      asset_id:             cryptoMapping.asset_id,
+      portfolio_id:         cryptoMapping.portfolio_id,
+      transaction_type:     'DEPOSITO',
+      trade_date:           fecha,
+      settlement_date:      fecha,
+      quantity:             monto,
+      price_per_unit:       1,
+      gross_amount:         monto,
+      net_amount:           monto,
+      currency:             'USDT',
+      notes:                `honorarios:${descripcion}|origen:personal_transactions`,
+      residual_factor_at_trade: 1,
+    }).select('id').single()
+
+    if (invErr) {
+      // Personal ya quedó registrado — loguear sin revertir
+      console.error('[cruzadas/INGRESO_COMITENTE] inv insert error (non-fatal):', invErr)
+    } else {
+      investmentTxId = invTx!.id
+    }
+  }
+
   return NextResponse.json({
     success:                 true,
     tipo:                    body.tipo,
-    transactions_id:         null,
+    transactions_id:         investmentTxId,
     personal_transaction_id: persTx!.id,
   })
 }
