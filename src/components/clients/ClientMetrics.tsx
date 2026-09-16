@@ -62,7 +62,7 @@ export default function ClientMetrics({ positions, earnPositions, personalAccoun
   const totalRetARS = sum(positions.map(p => p.total_return_ars))
 
   // earn USD para el breakdown (ya incluido en spotEarnUSD via portfolio_valuation_unified)
-  const earnUSD = earnPositions.reduce((s, ep) => s + ep.principal_amount_usd, 0)
+  const earnUSD = earnPositions.reduce((s, ep) => s + (ep.principal_amount_usd ?? 0), 0)
   const spotUSD = spotEarnUSD.minus(earnUSD).toNumber()
 
   const personalUSD = personalAccounts.reduce((s, acc) => {
