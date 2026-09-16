@@ -40,7 +40,7 @@ export default async function CryptoPage() {
     '5589925e-7aa7-47a3-94b5-2543bb6bb146',
   ]
 
-  const [{ data: positions }, { data: rawEarnPositions }, { data: rawEarnTxns }] = await Promise.all([
+  const [{ data: positions }, { data: rawEarnPositions }, { data: rawEarnTxnsRaw }] = await Promise.all([
     supabase
       .from('portfolio_valuation_unified')
       .select('*')
@@ -58,11 +58,20 @@ export default async function CryptoPage() {
       .order('created_at', { ascending: false }),
     supabaseSvc
       .from('transactions')
-      .select('trade_date, net_amount, asset_id, assets(ticker)')
+      .select('trade_date, net_amount, asset_id')
       .eq('transaction_type', 'INTERES_EARN')
       .in('portfolio_id', EARN_PORTFOLIO_IDS)
       .order('trade_date', { ascending: true }),
   ])
+
+  // Resolve tickers for earn transactions via a separate assets query
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawEarnTxns = (rawEarnTxnsRaw ?? []) as any[]
+  const earnAssetIds = [...new Set(rawEarnTxns.map((t: any) => t.asset_id).filter(Boolean))]
+  const { data: earnAssetRows } = earnAssetIds.length > 0
+    ? await supabaseSvc.from('assets').select('id, ticker').in('id', earnAssetIds)
+    : { data: [] }
+  const earnTickerMap = new Map(((earnAssetRows ?? []) as any[]).map((a: any) => [a.id, a.ticker as string]))
 
   const allPositions = positions ?? []
 
@@ -158,20 +167,17 @@ export default async function CryptoPage() {
       return bAum - aAum
     })
 
-  // Diagnóstico: verificar que el query de INTERES_EARN retorna datos
-  console.log('[crypto/page] rawEarnTxns count:', rawEarnTxns?.length ?? 0)
-  console.log('[crypto/page] rawEarnTxns sample:', JSON.stringify(rawEarnTxns?.slice(0, 2) ?? []))
+  const earnTransactions: EarnTransaction[] = rawEarnTxns.map((tx: any) => {
+    const ticker = (earnTickerMap.get(tx.asset_id) ?? '').toUpperCase()
+    return {
+      trade_date: tx.trade_date as string,
+      net_amount: Number(tx.net_amount),
+      ticker,
+      platform: ticker,
+    }
+  })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const earnTransactions: EarnTransaction[] = ((rawEarnTxns ?? []) as any[]).map((tx: any) => ({
-    trade_date: tx.trade_date as string,
-    net_amount: Number(tx.net_amount),
-    ticker:     (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
-    platform:   (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
-  }))
-
-  console.log('[crypto/page] earnTransactions count:', earnTransactions.length)
-  console.log('[crypto/page] earnTransactions sample:', JSON.stringify(earnTransactions.slice(0, 2)))
+  console.log('[crypto/page] earnTransactions:', earnTransactions.length)
 
   return (
     <div className="space-y-6">
