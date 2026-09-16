@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { href: '/finanzas-personales/presupuesto',    icon: PieChart,        label: 'Presupuesto',    indent: true },
   { href: '/finanzas-personales/suscripciones',  icon: RefreshCcw,      label: 'Suscripciones',  indent: true },
   { href: '/finanzas-personales/patrimonio',     icon: BarChart3,       label: 'Patrimonio',     indent: true },
+  { href: '/finanzas-personales/facturas',       icon: FileText,        label: 'Facturas',       indent: true },
   { href: '/configuracion',                       icon: Settings,        label: 'Configuración'   },
 ]
 
