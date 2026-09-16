@@ -256,9 +256,9 @@ async function gastoNexoCard(db: ReturnType<typeof svc>, body: RequestBody) {
     return NextResponse.json({ success: false, error: invErr.message }, { status: 500 })
   }
 
-  // 2. Egreso en efectivo USD
+  // 2. Egreso en cuenta origen (efectivo USD por defecto, o USDT wallet)
   const { data: persTx, error: persErr } = await db.from('personal_transactions').insert({
-    account_id:  EFECTIVO_USD_ID,
+    account_id:  body.cuenta_id ?? EFECTIVO_USD_ID,
     category_id: categoria_id ?? null,
     type:        'EGRESO',
     amount:      monto,
@@ -291,7 +291,7 @@ async function ingresoComitente(db: ReturnType<typeof svc>, body: RequestBody) {
   const { fecha, monto, moneda, descripcion, fx_rate_mep, categoria_id } = body
 
   const { data: persTx, error: persErr } = await db.from('personal_transactions').insert({
-    account_id:  CUENTA_COMITENTE_ID,
+    account_id:  body.cuenta_id ?? CUENTA_COMITENTE_ID,
     category_id: categoria_id ?? null,
     type:        'INGRESO',
     amount:      monto,

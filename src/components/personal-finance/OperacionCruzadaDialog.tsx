@@ -38,6 +38,9 @@ const FCI_COCOS = [
 // Portfolio de Nexo Earn CeFi para GASTO_NEXO_CARD
 const NEXO_PORTFOLIO_ID = '535f1419-cf5f-4963-97c3-b4b60afef1ab'
 
+// Cuenta comitente por defecto para INGRESO_COMITENTE
+const CUENTA_COMITENTE_ID = '5d993bf0-9fc6-4c6a-9344-f38b84e9ffc4'
+
 const MONEDAS = ['ARS', 'USD', 'USDT', 'EUR']
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -218,15 +221,16 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
             toast.error('Completar: monto USD, cantidad NEXO y precio NEXO'); return
           }
           body = {
-            tipo:          'GASTO_NEXO_CARD',
-            fecha:         form.fecha,
-            monto:         parseFloat(form.monto),
-            moneda:        'USD',
-            descripcion:   form.descripcion || 'Gasto Nexo Card',
-            portfolio_id:  NEXO_PORTFOLIO_ID,
+            tipo:           'GASTO_NEXO_CARD',
+            fecha:          form.fecha,
+            monto:          parseFloat(form.monto),
+            moneda:         'USD',
+            descripcion:    form.descripcion || 'Gasto Nexo Card',
+            portfolio_id:   NEXO_PORTFOLIO_ID,
             nexo_quantity:  parseFloat(form.nexo_quantity),
             nexo_price_usd: parseFloat(form.nexo_price_usd),
-            categoria_id:  form.categoria_id || null,
+            categoria_id:   form.categoria_id || null,
+            cuenta_id:      form.cuenta_id || null,
           }
           break
         }
@@ -240,6 +244,7 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
             descripcion:  form.descripcion || 'Ingreso comitente',
             fx_rate_mep:  form.fx_rate_mep ? parseFloat(form.fx_rate_mep) : null,
             categoria_id: form.categoria_id || null,
+            cuenta_id:    form.cuenta_id || null,
             notas:        form.notas || null,
           }
           break
@@ -287,7 +292,13 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
             label="Tipo de operación *"
             value={form.tipo}
             onChange={e => {
-              setForm({ ...EMPTY_FORM, fecha: form.fecha, tipo: e.target.value as TipoOperacion })
+              const newTipo = e.target.value as TipoOperacion
+              setForm({
+                ...EMPTY_FORM,
+                fecha:    form.fecha,
+                tipo:     newTipo,
+                cuenta_id: newTipo === 'INGRESO_COMITENTE' ? CUENTA_COMITENTE_ID : '',
+              })
               setAssets([])
             }}
           >
@@ -482,6 +493,17 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
               placeholder="0.00"
             />
 
+            <FormSelect
+              label="Cuenta origen"
+              value={form.cuenta_id}
+              onChange={e => set('cuenta_id', e.target.value)}
+            >
+              <option value="">Efectivo USD (por defecto)</option>
+              {accounts
+                .filter(a => a.currency === 'USD' || a.currency === 'USDT')
+                .map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
+            </FormSelect>
+
             <div className="grid grid-cols-2 gap-4">
               <FormInput
                 label="Cantidad NEXO debitada *"
@@ -539,7 +561,11 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
               <FormSelect
                 label="Moneda"
                 value={form.moneda}
-                onChange={e => set('moneda', e.target.value)}
+                onChange={e => {
+                  const m = e.target.value
+                  set('moneda', m)
+                  set('cuenta_id', m === 'ARS' ? CUENTA_COMITENTE_ID : '')
+                }}
               >
                 {MONEDAS.map(m => <option key={m} value={m}>{m}</option>)}
               </FormSelect>
@@ -556,6 +582,17 @@ export default function OperacionCruzadaDialog({ open, onClose, onSuccess, accou
                 placeholder="0"
               />
             )}
+
+            <FormSelect
+              label="Cuenta de acreditación *"
+              value={form.cuenta_id}
+              onChange={e => set('cuenta_id', e.target.value)}
+            >
+              <option value="">Seleccionar cuenta</option>
+              {accounts
+                .filter(a => a.currency === form.moneda)
+                .map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            </FormSelect>
 
             <FormSelect
               label="Categoría"
