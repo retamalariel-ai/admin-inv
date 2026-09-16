@@ -24,10 +24,54 @@ function tickerToPlatform(ticker: string): string {
   return TICKER_TO_PLATFORM[ticker.toUpperCase()] ?? ticker
 }
 
-// MM/YYYY → YYYY-MM (for chronological sort)
 function monthSortKey(mmyyyy: string): string {
   const [m, y] = mmyyyy.split('/')
   return `${y}-${m}`
+}
+
+export interface EarnPivot {
+  platforms:      string[]
+  months:         string[]
+  matrix:         Record<string, Record<string, number>>
+  monthTotals:    Record<string, number>
+  platformTotals: Record<string, number>
+  grandTotal:     number
+}
+
+export function buildEarnPivot(earnTransactions: EarnTransaction[]): EarnPivot {
+  const platformMap = new Map<string, Record<string, number>>()
+  const monthSet    = new Set<string>()
+
+  for (const tx of earnTransactions) {
+    const platform = tickerToPlatform(tx.ticker)
+    const [y, m]   = tx.trade_date.slice(0, 7).split('-')
+    const month    = `${m}/${y}`
+
+    monthSet.add(month)
+    if (!platformMap.has(platform)) platformMap.set(platform, {})
+    const row  = platformMap.get(platform)!
+    row[month] = (row[month] ?? 0) + (tx.net_amount ?? 0)
+  }
+
+  const months    = [...monthSet].sort((a, b) =>
+    monthSortKey(a) < monthSortKey(b) ? -1 : 1,
+  )
+  const platforms = [...platformMap.keys()].sort()
+  const matrix: Record<string, Record<string, number>> = Object.fromEntries(platformMap)
+
+  const monthTotals: Record<string, number> = {}
+  for (const month of months) {
+    monthTotals[month] = platforms.reduce((s, p) => s + (matrix[p]?.[month] ?? 0), 0)
+  }
+
+  const platformTotals: Record<string, number> = {}
+  for (const platform of platforms) {
+    platformTotals[platform] = months.reduce((s, m) => s + (matrix[platform]?.[m] ?? 0), 0)
+  }
+
+  const grandTotal = months.reduce((s, m) => s + (monthTotals[m] ?? 0), 0)
+
+  return { platforms, months, matrix, monthTotals, platformTotals, grandTotal }
 }
 
 interface Props {
@@ -35,42 +79,10 @@ interface Props {
 }
 
 export default function EarnReport({ earnTransactions }: Props) {
-  const { platforms, months, matrix, monthTotals, platformTotals, grandTotal } = useMemo(() => {
-    const platformMap = new Map<string, Record<string, number>>()
-    const monthSet    = new Set<string>()
-
-    for (const tx of earnTransactions) {
-      const platform = tickerToPlatform(tx.ticker)
-      const [y, m]   = tx.trade_date.slice(0, 7).split('-')
-      const month    = `${m}/${y}` // MM/YYYY
-
-      monthSet.add(month)
-      if (!platformMap.has(platform)) platformMap.set(platform, {})
-      const row   = platformMap.get(platform)!
-      row[month]  = (row[month] ?? 0) + (tx.net_amount ?? 0)
-    }
-
-    const months    = [...monthSet].sort((a, b) =>
-      monthSortKey(a) < monthSortKey(b) ? -1 : 1,
-    )
-    const platforms = [...platformMap.keys()].sort()
-
-    const matrix: Record<string, Record<string, number>> = Object.fromEntries(platformMap)
-
-    const monthTotals: Record<string, number> = {}
-    for (const month of months) {
-      monthTotals[month] = platforms.reduce((s, p) => s + (matrix[p]?.[month] ?? 0), 0)
-    }
-
-    const platformTotals: Record<string, number> = {}
-    for (const platform of platforms) {
-      platformTotals[platform] = months.reduce((s, m) => s + (matrix[platform]?.[m] ?? 0), 0)
-    }
-
-    const grandTotal = months.reduce((s, m) => s + (monthTotals[m] ?? 0), 0)
-
-    return { platforms, months, matrix, monthTotals, platformTotals, grandTotal }
-  }, [earnTransactions])
+  const { platforms, months, matrix, monthTotals, platformTotals, grandTotal } = useMemo(
+    () => buildEarnPivot(earnTransactions),
+    [earnTransactions],
+  )
 
   if (earnTransactions.length === 0) return null
 

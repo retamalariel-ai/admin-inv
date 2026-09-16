@@ -9,9 +9,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { formatUSD, formatARS, formatCrypto } from '@/lib/utils/calculations'
-import { downloadCSV } from '@/lib/utils/csv'
+import { toCSV, downloadCSV } from '@/lib/utils/csv'
 import EarnTracker, { type EarnPosition } from './EarnTracker'
-import EarnReport, { type EarnTransaction } from './EarnReport'
+import EarnReport, { buildEarnPivot, type EarnTransaction } from './EarnReport'
 import type { Database } from '@/types/database.types'
 
 type Position  = Database['public']['Views']['portfolio_valuation_unified']['Row']
@@ -332,7 +332,8 @@ export default function CryptoDashboard({ portfolioGroups, today, earnTransactio
   }, [allEarnPositions])
 
   function handleExport() {
-    const rows = allPositions.map(p => ({
+    // Section 1: positions
+    const posRows = allPositions.map(p => ({
       Portfolio:   p.portfolio_name ?? '',
       Token:       p.ticker ?? '',
       Tipo:        p.asset_type ?? '',
@@ -344,7 +345,35 @@ export default function CryptoDashboard({ portfolioGroups, today, earnTransactio
       PnL_USD:     p.unrealized_pnl_usd ?? '',
       Income_USD:  p.total_income_received_usd ?? '',
     }))
-    downloadCSV(`crypto-${today}.csv`, rows)
+    const posCsv = toCSV(posRows)
+
+    // Section 2: earn income pivot
+    const { platforms, months, matrix, monthTotals, platformTotals, grandTotal } =
+      buildEarnPivot(earnTransactions)
+
+    const q = (s: string) => `"${s.replace(/"/g, '""')}"`
+    const n = (v: number)  => v.toFixed(2)
+
+    const earnLines = earnTransactions.length > 0
+      ? [
+          '',
+          'EARN / INCOME HISTÓRICO',
+          [q('Plataforma'), ...months.map(q), q('Total')].join(','),
+          ...platforms.map(p =>
+            [q(p), ...months.map(m => n(matrix[p]?.[m] ?? 0)), n(platformTotals[p] ?? 0)].join(','),
+          ),
+          [q('TOTAL'), ...months.map(m => n(monthTotals[m] ?? 0)), n(grandTotal)].join(','),
+        ]
+      : []
+
+    const fullCsv = [posCsv, ...earnLines].join('\n')
+    const blob = new Blob(['﻿' + fullCsv], { type: 'text/csv;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = `crypto-${today}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
