@@ -11,6 +11,7 @@ import {
 import { formatUSD, formatARS, formatCrypto } from '@/lib/utils/calculations'
 import { downloadCSV } from '@/lib/utils/csv'
 import EarnTracker, { type EarnPosition } from './EarnTracker'
+import EarnReport, { type EarnTransaction } from './EarnReport'
 import type { Database } from '@/types/database.types'
 
 type Position  = Database['public']['Views']['portfolio_valuation_unified']['Row']
@@ -300,11 +301,12 @@ function PortfolioSection({ group }: { group: PortfolioGroup }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 interface Props {
-  portfolioGroups: PortfolioGroup[]
-  today:           string
+  portfolioGroups:  PortfolioGroup[]
+  today:            string
+  earnTransactions: EarnTransaction[]
 }
 
-export default function CryptoDashboard({ portfolioGroups, today }: Props) {
+export default function CryptoDashboard({ portfolioGroups, today, earnTransactions }: Props) {
   const allPositions     = useMemo(() => portfolioGroups.flatMap(g => g.positions),     [portfolioGroups])
   const allEarnPositions = useMemo(() => portfolioGroups.flatMap(g => g.earnPositions), [portfolioGroups])
 
@@ -409,6 +411,9 @@ export default function CryptoDashboard({ portfolioGroups, today }: Props) {
           </div>
         </div>
       )}
+
+      {/* Earn income report — historical pivot by platform × month */}
+      <EarnReport earnTransactions={earnTransactions} />
 
       <p className="text-xs text-slate-600 text-right">
         {allPositions.length} posiciones · {portfolioGroups.length} plataformas · {today}

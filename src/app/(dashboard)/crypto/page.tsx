@@ -3,6 +3,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js'
 import CryptoDashboard, { type PortfolioGroup } from '@/components/crypto/CryptoDashboard'
 import type { Database } from '@/types/database.types'
 import type { EarnPosition } from '@/components/crypto/EarnTracker'
+import type { EarnTransaction } from '@/components/crypto/EarnReport'
 
 type AssetType = Database['public']['Enums']['asset_type']
 
@@ -33,7 +34,13 @@ export default async function CryptoPage() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   ) as any
 
-  const [{ data: positions }, { data: rawEarnPositions }] = await Promise.all([
+  const EARN_PORTFOLIO_IDS = [
+    '535f1419-cf5f-4963-97c3-b4b60afef1ab',
+    'c769f338-1193-4867-abc1-a32633ed54d6',
+    '5589925e-7aa7-47a3-94b5-2543bb6bb146',
+  ]
+
+  const [{ data: positions }, { data: rawEarnPositions }, { data: rawEarnTxns }] = await Promise.all([
     supabase
       .from('portfolio_valuation_unified')
       .select('*')
@@ -49,6 +56,12 @@ export default async function CryptoPage() {
       `)
       .eq('is_active', true)
       .order('created_at', { ascending: false }),
+    supabaseSvc
+      .from('transactions')
+      .select('trade_date, net_amount, asset_id, assets(ticker)')
+      .eq('transaction_type', 'INTERES_EARN')
+      .in('portfolio_id', EARN_PORTFOLIO_IDS)
+      .order('trade_date', { ascending: true }),
   ])
 
   const allPositions = positions ?? []
@@ -145,6 +158,14 @@ export default async function CryptoPage() {
       return bAum - aAum
     })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const earnTransactions: EarnTransaction[] = ((rawEarnTxns ?? []) as any[]).map((tx: any) => ({
+    trade_date: tx.trade_date as string,
+    net_amount: Number(tx.net_amount),
+    ticker:     (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
+    platform:   (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
+  }))
+
   return (
     <div className="space-y-6">
       <div>
@@ -156,6 +177,7 @@ export default async function CryptoPage() {
       <CryptoDashboard
         portfolioGroups={portfolioGroups}
         today={new Date().toISOString().slice(0, 10)}
+        earnTransactions={earnTransactions}
       />
     </div>
   )
