@@ -53,28 +53,28 @@ const ASSET_LABELS: Record<AssetType, string> = {
 }
 
 const ASSET_COLOR: Partial<Record<AssetType, string>> = {
-  ACCION_LOCAL:        'bg-blue-100 text-blue-700',
-  CEDEAR:              'bg-indigo-100 text-indigo-700',
-  BONO_SOBERANO:       'bg-emerald-100 text-emerald-700',
-  BONO_SUBSOBERANO:    'bg-teal-100 text-teal-700',
-  ON:                  'bg-cyan-100 text-cyan-700',
-  LETES:               'bg-emerald-100 text-emerald-600',
-  LECAP:               'bg-green-50 text-green-600',
-  FCI_MONEY_MARKET:    'bg-slate-100 text-slate-600',
-  FCI_RENTA_FIJA:      'bg-slate-100 text-slate-600',
-  FCI_RENTA_VARIABLE:  'bg-blue-100 text-blue-600',
-  FCI_RENTA_MIXTA:     'bg-blue-50 text-blue-500',
-  CRYPTO_SPOT:         'bg-amber-100 text-amber-700',
-  CRYPTO_STABLECOIN:   'bg-amber-50 text-amber-600',
-  CRYPTO_EARN:         'bg-orange-100 text-orange-700',
-  CRYPTO_DEFI_LP:      'bg-purple-100 text-purple-700',
-  CRYPTO_DEFI_STAKE:   'bg-purple-100 text-purple-700',
-  CRYPTO_DEFI_LENDING: 'bg-violet-100 text-violet-700',
-  CASH_ARS:            'bg-slate-100 text-slate-500',
-  CASH_USD_MEP:        'bg-slate-100 text-slate-500',
-  CASH_USD_CCL:        'bg-slate-100 text-slate-500',
-  CASH_CRYPTO_STABLE:  'bg-slate-100 text-slate-500',
-  CASH_CRYPTO_NATIVE:  'bg-slate-100 text-slate-500',
+  ACCION_LOCAL:        'bg-blue-500/15 text-blue-300 border border-blue-500/25',
+  CEDEAR:              'bg-indigo-500/15 text-indigo-300 border border-indigo-500/25',
+  BONO_SOBERANO:       'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25',
+  BONO_SUBSOBERANO:    'bg-teal-500/15 text-teal-300 border border-teal-500/25',
+  ON:                  'bg-cyan-500/15 text-cyan-300 border border-cyan-500/25',
+  LETES:               'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+  LECAP:               'bg-green-500/10 text-green-400 border border-green-500/20',
+  FCI_MONEY_MARKET:    'bg-slate-500/15 text-slate-300 border border-slate-500/20',
+  FCI_RENTA_FIJA:      'bg-slate-500/15 text-slate-300 border border-slate-500/20',
+  FCI_RENTA_VARIABLE:  'bg-blue-500/15 text-blue-300 border border-blue-500/25',
+  FCI_RENTA_MIXTA:     'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  CRYPTO_SPOT:         'bg-amber-500/15 text-amber-300 border border-amber-500/25',
+  CRYPTO_STABLECOIN:   'bg-amber-500/10 text-amber-400 border border-amber-500/20',
+  CRYPTO_EARN:         'bg-orange-500/15 text-orange-300 border border-orange-500/25',
+  CRYPTO_DEFI_LP:      'bg-purple-500/15 text-purple-300 border border-purple-500/25',
+  CRYPTO_DEFI_STAKE:   'bg-purple-500/15 text-purple-300 border border-purple-500/25',
+  CRYPTO_DEFI_LENDING: 'bg-violet-500/15 text-violet-300 border border-violet-500/25',
+  CASH_ARS:            'bg-slate-500/10 text-slate-400 border border-slate-500/15',
+  CASH_USD_MEP:        'bg-slate-500/10 text-slate-400 border border-slate-500/15',
+  CASH_USD_CCL:        'bg-slate-500/10 text-slate-400 border border-slate-500/15',
+  CASH_CRYPTO_STABLE:  'bg-slate-500/10 text-slate-400 border border-slate-500/15',
+  CASH_CRYPTO_NATIVE:  'bg-slate-500/10 text-slate-400 border border-slate-500/15',
 }
 
 const CRYPTO_TYPES: AssetType[] = [
@@ -320,8 +320,8 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
       </div>
 
       {/* Tabla */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
+      <div className="rounded border border-border overflow-hidden">
+        <Table className="table-terminal">
           <TableHeader className="bg-muted/50">
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground text-xs uppercase tracking-wider">Ticker</TableHead>
@@ -425,7 +425,7 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                           {pos.asset_name ?? '—'}
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs border-0 ${badgeClass}`}>
+                          <Badge className={`text-[10px] font-mono font-medium tracking-wide uppercase ${badgeClass}`}>
                             {pos.asset_type ? ASSET_LABELS[pos.asset_type as AssetType] : '—'}
                           </Badge>
                         </TableCell>
