@@ -158,6 +158,10 @@ export default async function CryptoPage() {
       return bAum - aAum
     })
 
+  // Diagnóstico: verificar que el query de INTERES_EARN retorna datos
+  console.log('[crypto/page] rawEarnTxns count:', rawEarnTxns?.length ?? 0)
+  console.log('[crypto/page] rawEarnTxns sample:', JSON.stringify(rawEarnTxns?.slice(0, 2) ?? []))
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const earnTransactions: EarnTransaction[] = ((rawEarnTxns ?? []) as any[]).map((tx: any) => ({
     trade_date: tx.trade_date as string,
@@ -165,6 +169,9 @@ export default async function CryptoPage() {
     ticker:     (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
     platform:   (tx.assets?.ticker as string | undefined)?.toUpperCase() ?? '',
   }))
+
+  console.log('[crypto/page] earnTransactions count:', earnTransactions.length)
+  console.log('[crypto/page] earnTransactions sample:', JSON.stringify(earnTransactions.slice(0, 2)))
 
   return (
     <div className="space-y-6">
