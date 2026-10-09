@@ -133,22 +133,26 @@ BEGIN
     -- -----------------------------------------------------------------------
 
     IF rec.transaction_type IN ('COMPRA', 'SUSCRIPCION_FCI', 'TRANSFERENCIA_IN', 'BRIDGE_IN') THEN
-      -- Entrada de activo: acumula costo base y posición
-      v_cost_ars        := v_cost_ars + v_net_ars;
-      v_cost_usd        := v_cost_usd + v_net_usd;
+      -- Entrada de activo: acumula costo base y posición.
+      -- ABS() garantiza que net_amounts negativos (convención de egreso de caja) no
+      -- corrompan el costo base cuando el campo se almacenó con signo negativo.
+      v_cost_ars        := v_cost_ars + ABS(v_net_ars);
+      v_cost_usd        := v_cost_usd + ABS(v_net_usd);
       v_qty             := v_qty + rec.quantity;
-      v_sum_ars_compras := v_sum_ars_compras + v_net_ars;
-      v_sum_usd_compras := v_sum_usd_compras + v_net_usd;
+      v_sum_ars_compras := v_sum_ars_compras + ABS(v_net_ars);
+      v_sum_usd_compras := v_sum_usd_compras + ABS(v_net_usd);
       IF v_first_date IS NULL THEN
         v_first_date := rec.trade_date;
       END IF;
 
     ELSIF rec.transaction_type IN ('VENTA', 'RESCATE_FCI', 'TRANSFERENCIA_OUT', 'BRIDGE_OUT') THEN
-      -- Salida de activo: realiza ganancia/pérdida al PPP vigente antes de la venta
+      -- Salida de activo: realiza ganancia/pérdida al PPP vigente antes de la venta.
+      -- ABS() en v_net garantiza que ingresos de caja (positivos en CSV, a veces
+      -- almacenados con signo positivo o negativo según origen) se procesen igual.
       v_ppp_ars      := CASE WHEN v_qty > 0 THEN v_cost_ars / v_qty ELSE 0 END;
       v_ppp_usd      := CASE WHEN v_qty > 0 THEN v_cost_usd / v_qty ELSE 0 END;
-      v_realized_ars := v_realized_ars + v_net_ars - (v_ppp_ars * rec.quantity);
-      v_realized_usd := v_realized_usd + v_net_usd - (v_ppp_usd * rec.quantity);
+      v_realized_ars := v_realized_ars + ABS(v_net_ars) - (v_ppp_ars * rec.quantity);
+      v_realized_usd := v_realized_usd + ABS(v_net_usd) - (v_ppp_usd * rec.quantity);
       v_cost_ars     := v_cost_ars - (v_ppp_ars * rec.quantity);
       v_cost_usd     := v_cost_usd - (v_ppp_usd * rec.quantity);
       v_qty          := v_qty - rec.quantity;
