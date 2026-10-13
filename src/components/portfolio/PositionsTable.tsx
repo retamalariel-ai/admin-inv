@@ -387,6 +387,7 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
             ) : (
               groups.flatMap((group, gi) => {
                 const groupValueARS = group.positions.reduce((s, p) => s + (p.market_value_ars ?? 0), 0)
+                const groupValueUSD = group.positions.reduce((s, p) => s + (p.market_value_usd ?? 0), 0)
                 const groupPct      = totalPortfolioAUM > 0 ? groupValueARS / totalPortfolioAUM * 100 : 0
                 const rightSpan     = pnlView === 'DETALLE' ? 5 : 4
                 return [
@@ -548,7 +549,8 @@ export default function PositionsTable({ portfolioId, positions, baseCurrency = 
                       Total {group.label} · {group.positions.length} posición{group.positions.length !== 1 ? 'es' : ''}
                     </TableCell>
                     <TableCell className="text-right font-mono text-xs font-semibold text-foreground/80 py-2">
-                      {formatARS(new Decimal(groupValueARS))}
+                      <div>{formatARS(new Decimal(groupValueARS))}</div>
+                      <div className="text-[10px] text-muted-foreground font-normal">{formatUSD(new Decimal(groupValueUSD))}</div>
                     </TableCell>
                     <TableCell className="text-right py-2">
                       <div className="font-mono text-xs text-foreground/80 tabular-nums">{groupPct.toFixed(1)}%</div>
